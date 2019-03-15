@@ -6,13 +6,38 @@ This package implements the algorithm described in (paper not written yet), for 
 ## Usage
 Given a location trace such as:
 
-![img](https://ulfaslak.com/files/infostop_example_code1.png)
+```Python
+>>> data 
+array([[ 55.75259295,  12.34353885 ],
+       [ 55.7525908 ,  12.34353145 ],
+       [ 55.7525876 ,  12.3435386  ],
+       ...,
+       [ 63.40379175,  10.40477095 ],
+       [ 63.4037841 ,  10.40480265 ],
+       [ 63.403787  ,  10.4047871  ]])
+```
 
-A stop location solution can be obtained like:
+A stop location solution can be obtained using:
 
-![img](https://ulfaslak.com/files/infostop_example_code2.png)
+```Python
+>>> import infostop
+>>> labels = infostop.best_partition(data)
+```
 
-Plotting it onto a map:
+Here, `labels` matches `data` in size, and can easily be mapped back onto `data`:
+
+```Python
+>>> np.hstack([data, labels.reshape(-1, 1)])
+array([[ 55.75259295,  12.34353885,   0.        ],
+       [ 55.7525908 ,  12.34353145,   0.        ],
+       [ 55.7525876 ,  12.3435386 ,   0.        ],
+       ...,
+       [ 63.40379175,  10.40477095, 164.        ],
+       [ 63.4037841 ,  10.40480265, 164.        ],
+       [ 63.403787  ,  10.4047871 , 164.        ]])
+```
+
+Plotting this onto a map:
 
 ![img](https://ulfaslak.com/files/infostop_example_map.png)
 
