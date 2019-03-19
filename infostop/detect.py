@@ -53,6 +53,10 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False):
         if mask[int(j + i * c - (i+1) * (i+2) / 2)]  # index in `mask` corresponding to i,j in `pairwise_dist`:
     ]                                                # square matrix flattened index of i, j *minus* lower triangle
                                                      # (including diagonal) down to i+1.
+
+    if len(edges) < 1:
+        raise Exception("Found only %d edge(s). Provide longer trajectory or increase `r2`.")
+        
     # INFER LABELS
     # ------------
     # Infer the partition with infomap. Partiton has from {node: community, ...}

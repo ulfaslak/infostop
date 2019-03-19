@@ -163,8 +163,7 @@ def infomap_communities(edges):
     infomapSimple.run()
     
     # Return in node-community dictionary format
-    return dict(
-        (name_map_inverted[node.physicalId], node.moduleIndex())
-        for node in infomapSimple.iterTree()
-        if node.isLeaf()
-    )
+    return dict([
+        (name_map_inverted[k], v)
+        for k, v in infomapSimple.getModules().items()
+    ])
