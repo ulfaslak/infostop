@@ -146,14 +146,14 @@ def infomap_communities(nodes, edges):
     for id_, n in enumerate(nodes):  # Loop over nodes
         name_map_inverted[id_] = n
         name_map[n] = id_
-       
+        
     # Initiate two-level Infomap
     infomapSimple = infomap.Infomap("--two-level")
     network = infomapSimple.network()
     
     # Add nodes
     for n in nodes:
-        network.addNode(n)
+        network.addNode(name_map[n])
 
     # Add links (weighted)
     if len(edges[0]) == 2:

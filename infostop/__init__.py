@@ -8,7 +8,7 @@ from .detect import best_partition
 
 name = "infostop"
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 __author__ = "Ulf Aslak"
 __copyright__ = "Copyright 2019, Ulf Aslak"
 __credits__ = ["Ulf Aslak"]

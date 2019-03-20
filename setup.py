@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="infostop",
-    version="0.0.7",
+    version="0.0.8",
     author="Ulf Aslak",
     author_email="ulfjensen@gmail.com",
     description="Detect stop locations in time-ordered (lat, lon) location data",
