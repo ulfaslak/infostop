@@ -85,6 +85,7 @@ def group_time_distance(coords, r_C):
         # Put in current group
         if dist <= r_C:
             current_group = np.vstack([current_group, coord])
+        
         # Or start new group if dist is too large
         else:
             groups.append(current_group)
@@ -119,14 +120,15 @@ def get_stationary_medoids(groups, min_size=1):
     for g in groups:
         if g.shape[0] > min_size:
             stat_coords = np.vstack([stat_coords, np.median(g, axis=0).reshape(1, -1)])
-            medoid_map.extend([i] * len(g)); i += 1
+            medoid_map.extend([i] * len(g))
+            i += 1
         else:
-            medoid_map.append(-1)
+            medoid_map.extend([-1] * len(g))
      
     return stat_coords, np.array(medoid_map)
 
 
-def infomap_communities(edges):
+def infomap_communities(nodes, edges):
     """Two-level partition of single-layer network with Infomap.
     
     Input
@@ -141,7 +143,7 @@ def infomap_communities(edges):
     # Represent node names as indices
     name_map = {}
     name_map_inverted = {}
-    for id_, n in enumerate(set([n for e in edges for n in e[:2]])):  # Loop over nodes
+    for id_, n in enumerate(nodes):  # Loop over nodes
         name_map_inverted[id_] = n
         name_map[n] = id_
        
@@ -149,6 +151,10 @@ def infomap_communities(edges):
     infomapSimple = infomap.Infomap("--two-level")
     network = infomapSimple.network()
     
+    # Add nodes
+    for n in nodes:
+        network.addNode(n)
+
     # Add links (weighted)
     if len(edges[0]) == 2:
         for n1, n2 in edges:

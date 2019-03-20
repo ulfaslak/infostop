@@ -1,7 +1,7 @@
 import numpy as np
 from infostop import utils
 
-def best_partition(coords, r1=10, r2=10, return_medoid_labels=False):
+def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singleton=False):
     """Infer best stop-location labels from stationary points using infomap.
 
     The method entils the following steps:
@@ -23,10 +23,17 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False):
             Max distance between stationary points to form an edge.
         return_medoid_labels : bool
             If True, return labels of median values of stationary events, not `coords`.
+        label_singleton: bool
+            If True, give stationary locations that was only visited once their own
+            label. If False, label them as outliers (-1).
 
     Output
     ------
-        out : array-like (N, ) 
+        out : array-like (N, )
+            Array of labels matching input in length. Non-stationary locations and
+            outliers (locations visited only once if `label_singleton == False`) are
+            labeled as -1. Detected stop locations are labeled from 0 and up, and
+            typically locations with more observations have lower indices.
     """
     # PREPROCESS
     # ----------
@@ -44,15 +51,18 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False):
     # Construct a network where nodes are stationary location events
     # and edges are formed between nodes if they are within distance `r2`
     c = stat_medoids.shape[0]
-    mask = pairwise_dist < r2
     
     # Take edges between points where pairwise distance is < r2
-    edges = [
-        (i, j)
-        for i in range(c) for j in range(i+1, c)
-        if mask[int(j + i * c - (i+1) * (i+2) / 2)]  # index in `mask` corresponding to i,j in `pairwise_dist`:
-    ]                                                # square matrix flattened index of i, j *minus* lower triangle
-                                                     # (including diagonal) down to i+1.
+    edges = []
+    nodes = set()
+    singleton_nodes = set(list(range(c)))
+    for i in range(c):
+        for j in range(i+1, c):
+            piotr_index = int(j + i * c - (i+1) * (i+2) / 2)
+            if pairwise_dist[piotr_index] < r2:  # index in `pairwise_dist` is upper triangle. Compute from i,j:
+                edges.append((i, j))             # square matrix flattened index of i,j *minus* lower triangle
+                nodes.update([i, j])             # (including diagonal) down to i+1.
+                singleton_nodes -= set([i, j])                                      
 
     if len(edges) < 1:
         raise Exception("Found only %d edge(s). Provide longer trajectory or increase `r2`.")
@@ -60,8 +70,15 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False):
     # INFER LABELS
     # ------------
     # Infer the partition with infomap. Partiton has from {node: community, ...}
-    partition = utils.infomap_communities(edges)
+    partition = utils.infomap_communities(list(nodes), edges)
     
+    if label_singleton:
+        max_label = max(partition.values())
+        partition.update(dict(zip(
+            singleton_nodes,
+            range(max_label+1, max_label+1+len(singleton_nodes))
+        )))
+
     # Cast the partition as a vector of labels like [community, community, ...]
     labels = np.array([
         partition[n] if n in partition else -1
