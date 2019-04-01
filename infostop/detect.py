@@ -69,16 +69,16 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
     groups = utils.group_time_distance(coords, r1, min_staying_time, max_staying_time)
     
     # Reduce time-grouped points to their median. Only keep stat. groups (size > 1)
-    stat_medoids, medoid_map = utils.get_stationary_medoids(groups, min_size=2)
+    stop_events, event_map = utils.get_stationary_events(groups, min_size=2)
 
     # Compute their pairwise distances
-    pairwise_dist = utils.haversine_pdist(stat_medoids)
+    pairwise_dist = utils.haversine_pdist(stop_events)
     
     # NETWORK
     # -------
     # Construct a network where nodes are stationary location events
     # and edges are formed between nodes if they are within distance `r2`
-    c = stat_medoids.shape[0]
+    c = stop_events.shape[0]
     
     # Take edges between points where pairwise distance is < r2
     edges = []
@@ -121,6 +121,6 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
     # -----------
     # Label all the input points and return that label vector
     labels += [-1] # hack: make the last item -1, so when you index -1 you get -1
-    coord_labels = np.array([labels[i] for i in medoid_map])
+    coord_labels = np.array([labels[i] for i in event_map])
     
     return coord_labels

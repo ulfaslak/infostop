@@ -120,7 +120,7 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time):
     groups.append(current_group)
     return groups
 
-def get_stationary_medoids(groups, min_size=2):
+def get_stationary_events(groups, min_size=2):
     """Convert groups of multiple points (stationary location events) to median-of-group points.
     
     Input
@@ -134,21 +134,21 @@ def get_stationary_medoids(groups, min_size=2):
     ------
         stat_coords : array-like (M, 2)
             Medioids of stationary groups
-        mediod_map : list
-            Group labels
+        event_map : list
+            Maps event index to input-data index. Used for mapping label ids onto each (lat, lon) point.
     """
     stat_coords = np.empty(shape=(0, 2))
-    medoid_map = []
+    event_map = []
     i = 0
     for g in groups:
         if g.shape[0] >= min_size:
             stat_coords = np.vstack([stat_coords, np.median(g[:, :2], axis=0).reshape(1, -1)])
-            medoid_map.extend([i] * len(g))
+            event_map.extend([i] * len(g))
             i += 1
         else:
-            medoid_map.extend([-1] * len(g))
+            event_map.extend([-1] * len(g))
      
-    return stat_coords, np.array(medoid_map)
+    return stat_coords, np.array(event_map)
 
 
 def infomap_communities(nodes, edges):
