@@ -61,13 +61,15 @@ def haversine_pdist(points, radians=False):
         vec_idx += temp.shape[0]
     return result
 
-def group_time_distance(coords, r_C):
+def group_time_distance(coords, r_C, min_staying_time, max_staying_time):
     """Group temporally adjacent points if they are closer than r_C.
     
     Input
     -----
         coords : array-like (shape=(N, 2))
         r_C : number (critical radius)
+        min_staying_time : int
+        max_staying_time : int
     
     Output
     ------
@@ -76,27 +78,49 @@ def group_time_distance(coords, r_C):
     """
     groups = []
     
-    current_group = coords[0].reshape(-1, 2)
-    for coord in coords[1:]:
+    if coords.shape[1] == 2:
+        current_group = coords[0].reshape(1, 2)
+        for coord in coords[1:]:
+            
+            # Compute distance to current group
+            dist = haversine(np.median(current_group, axis=0), coord)
         
-        # Compute distance to current group
-        dist = haversine(np.median(current_group, axis=0), coord)
-    
-        # Put in current group
-        if dist <= r_C:
-            current_group = np.vstack([current_group, coord])
+            # Put in current group
+            if dist <= r_C:
+                current_group = np.vstack([current_group, coord])
+            
+            # Or start new group if dist is too large
+            else:
+                groups.append(current_group)
+                current_group = coord.reshape(1, 2)
+
+    else:
+        current_group = coords[0].reshape(1, 3)
+        for coord in coords[1:]:
+            
+            # Compute distance to current group
+            dist = haversine(np.median(current_group[:, :2], axis=0), coord[:2])
+            time = current_group[-1, 2] - coord[2]
         
-        # Or start new group if dist is too large
-        else:
-            groups.append(current_group)
-            current_group = coord.reshape(-1, 2)
+            # Put in current group
+            if dist <= r_C and time <= max_staying_time:
+                current_group = np.vstack([current_group, coord])
+            
+            # Or start new group if dist is too large or time criteria are not met
+            else:
+                if current_group.shape[0] == 1:
+                    groups.append(current_group)
+                elif current_group[-1, 2] - current_group[0, 2] > min_staying_time:
+                    groups.append(current_group)
+                else:
+                    groups.extend(current_group.reshape(-1, 1, 3))
+                current_group = coord.reshape(1, 3)
 
     # Add the last group
     groups.append(current_group)
-
     return groups
 
-def get_stationary_medoids(groups, min_size=1):
+def get_stationary_medoids(groups, min_size=2):
     """Convert groups of multiple points (stationary location events) to median-of-group points.
     
     Input
@@ -112,14 +136,13 @@ def get_stationary_medoids(groups, min_size=1):
             Medioids of stationary groups
         mediod_map : list
             Group labels
-            
     """
     stat_coords = np.empty(shape=(0, 2))
     medoid_map = []
     i = 0
     for g in groups:
-        if g.shape[0] > min_size:
-            stat_coords = np.vstack([stat_coords, np.median(g, axis=0).reshape(1, -1)])
+        if g.shape[0] >= min_size:
+            stat_coords = np.vstack([stat_coords, np.median(g[:, :2], axis=0).reshape(1, -1)])
             medoid_map.extend([i] * len(g))
             i += 1
         else:
