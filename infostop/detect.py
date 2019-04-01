@@ -1,7 +1,7 @@
 import numpy as np
 from infostop import utils
 
-def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singleton=False, min_staying_time=300, max_staying_time=86400):
+def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singleton=False, min_staying_time=300, max_time_between=86400):
     """Infer best stop-location labels from stationary points using infomap.
 
     The method entils the following steps:
@@ -29,7 +29,7 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
         min_staying_time : int
             The shortest duration that can constitute a stop. Only used if timestamp column
             is provided
-        max_staying_time : int
+        max_time_between : int
             The longest duration that can constitute a stop. Only used if timestamp column
             is provided
 
@@ -66,7 +66,7 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
     # PREPROCESS
     # ----------
     # Time-group points
-    groups = utils.group_time_distance(coords, r1, min_staying_time, max_staying_time)
+    groups = utils.group_time_distance(coords, r1, min_staying_time, max_time_between)
     
     # Reduce time-grouped points to their median. Only keep stat. groups (size > 1)
     stop_events, event_map = utils.get_stationary_events(groups, min_size=2)
