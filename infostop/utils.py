@@ -259,8 +259,6 @@ def compute_intervals(coords, coord_labels, distance_function = haversine):
             final_trajectory.append([loc_prec, t_start,  t_end, np.median(average_lat), np.median(average_lon)])
             t_start = time 
             t_end = time 
-            tot_d = 0 
-            vs = [] 
             average_lat = []
             average_lon = []
             
