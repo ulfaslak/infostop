@@ -32,6 +32,11 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
         max_time_between : int
             The longest duration that can constitute a stop. Only used if timestamp column
             is provided
+        distance_function: function
+            The function to use to compute distances (can be utils.haversine, utils.euclidean)
+        return_intervals: bool
+            If True, aggregate the final trajectory into intervals
+            
 
     Output
     ------
