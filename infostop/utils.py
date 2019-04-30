@@ -236,9 +236,7 @@ def compute_intervals(coords, coord_labels, distance_function = haversine):
     final_trajectory = []
     
     #initialize values
-    lat_prec, lon_prec, t_start, loc_prec = trajectory[0]
-    tot_d = 0
-    vs = []    
+    lat_prec, lon_prec, t_start, loc_prec = trajectory[0]  
     time_prec = t_start
     t_end = t_start 
     average_lat = [lat_prec]
