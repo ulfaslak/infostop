@@ -1,7 +1,7 @@
 import numpy as np
 from infostop import utils
 
-def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function = utils.haversine, return_intervals = False):
+def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function = utils.haversine, return_intervals = False, min_size = 2):
     """Infer best stop-location labels from stationary points using infomap.
 
     The method entils the following steps:
@@ -35,7 +35,9 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
         distance_function: function
             The function to use to compute distances (can be utils.haversine, utils.euclidean)
         return_intervals: bool
-            If True, aggregate the final trajectory into intervals
+            If True, aggregate the final trajectory into intervals (default: True)
+        min_size: int
+            Minimum size of group to consider it stationary (default: 2)
             
 
     Output
@@ -78,7 +80,7 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
     groups = utils.group_time_distance(coords, r1, min_staying_time, max_time_between, distance_function)
     
     # Reduce time-grouped points to their median. Only keep stat. groups (size > 1)
-    stop_events, event_map = utils.get_stationary_events(groups, min_size=2)
+    stop_events, event_map = utils.get_stationary_events(groups, min_size=min_size)
 
     # Compute their pairwise distances
     pairwise_dist = utils.general_pdist(stop_events, distance_function)
