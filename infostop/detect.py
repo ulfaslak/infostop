@@ -1,7 +1,7 @@
 import numpy as np
 from infostop import utils
 
-def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singleton=False, min_staying_time=300, max_time_between=86400):
+def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function = utils.haversine, return_intervals = False):
     """Infer best stop-location labels from stationary points using infomap.
 
     The method entils the following steps:
@@ -16,7 +16,7 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
     
     Input
     -----
-        coords : array-like (N, 2)
+        coords : array-like (N, 2) or (N,3)
         r1 : number
             Max distance between time-consecutive points to label them as stationary
         r2 : number
@@ -41,38 +41,42 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
             labeled as -1. Detected stop locations are labeled from 0 and up, and
             typically locations with more observations have lower indices.
     """
+
     # ASSERTIONS
     # ----------
     try:
         assert coords.shape[1] in [2, 3]
     except AssertionError:
-        raise AssertionError("Number of columns must be 2 or 3")
-    try:
-        assert np.min(coords[:, 0]) > -90
-        assert np.max(coords[:, 0]) < 90
-    except AssertionError:
-        raise AssertionError("Column 0 (latitude) must have values between -90 and 90")
-    try:
-        assert np.min(coords[:, 1]) > -180
-        assert np.max(coords[:, 1]) < 180
-    except AssertionError:
-        raise AssertionError("Column 1 (longitude) must have values between -180 and 180")
+        raise AssertionError("Number of columns must be 2 or 3")        
     if coords.shape[1] == 3:
         try:
             assert np.all(coords[:-1, 2] <= coords[1:, 2])
         except AssertionError:
             raise AssertionError("Timestamps must be ordered")
+            
+    if distance_function == utils.haversine:
+        try:
+            assert np.min(coords[:, 0]) > -90
+            assert np.max(coords[:, 0]) < 90
+        except AssertionError:
+            raise AssertionError("Column 0 (latitude) must have values between -90 and 90")
+        try:
+            assert np.min(coords[:, 1]) > -180
+            assert np.max(coords[:, 1]) < 180
+        except AssertionError:
+            raise AssertionError("Column 1 (longitude) must have values between -180 and 180")
+
 
     # PREPROCESS
     # ----------
     # Time-group points
-    groups = utils.group_time_distance(coords, r1, min_staying_time, max_time_between)
+    groups = utils.group_time_distance(coords, r1, min_staying_time, max_time_between, distance_function)
     
     # Reduce time-grouped points to their median. Only keep stat. groups (size > 1)
     stop_events, event_map = utils.get_stationary_events(groups, min_size=2)
 
     # Compute their pairwise distances
-    pairwise_dist = utils.haversine_pdist(stop_events)
+    pairwise_dist = utils.general_pdist(stop_events, distance_function)
     
     # NETWORK
     # -------
@@ -122,5 +126,11 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
     # Label all the input points and return that label vector
     labels += [-1] # hack: make the last item -1, so when you index -1 you get -1
     coord_labels = np.array([labels[i] for i in event_map])
+
+    if return_intervals:
+        if coords.shape[1] == 2:
+            times = np.array(list(range(0,len(coords))))
+            coords = np.hstack([coords, times.reshape(-1,1)])
+        return utils.compute_intervals(coords, coord_labels)
     
     return coord_labels
