@@ -81,7 +81,15 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
     
     # Reduce time-grouped points to their median. Only keep stat. groups (size > 1)
     stop_events, event_map = utils.get_stationary_events(groups, min_size=min_size)
-
+    
+    #Run infomap
+    output = run_infomap(r2, coords, stop_events, distance_function, event_map, label_singleton,return_medoid_labels, return_intervals,max_time_between)
+    
+    return output
+    
+    
+def run_infomap(r2, coords, stop_events, distance_function, event_map, label_singleton,return_medoid_labels, return_intervals,max_time_between):
+    
     # Compute their pairwise distances
     pairwise_dist = utils.general_pdist(stop_events, distance_function)
     
@@ -91,17 +99,19 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
     # and edges are formed between nodes if they are within distance `r2`
     c = stop_events.shape[0]
     
+    
+
     # Take edges between points where pairwise distance is < r2
-    edges = []
-    nodes = set()
-    singleton_nodes = set(list(range(c)))
-    for i in range(c):
-        for j in range(i+1, c):
-            piotr_index = int(j + i * c - (i+1) * (i+2) / 2)
-            if pairwise_dist[piotr_index] < r2:  # index in `pairwise_dist` is upper triangle. Compute from i,j:
-                edges.append((i, j))             # square matrix flattened index of i,j *minus* lower triangle
-                nodes.update([i, j])             # (including diagonal) down to i+1.
-                singleton_nodes -= set([i, j])                                      
+    
+    D = np.zeros((c, c)) * np.nan
+    D[np.triu_indices(c, 1)] = pairwise_dist
+    
+    edges = np.column_stack(np.where(D<r2))
+    nodes = np.unique(edges.flatten())
+    
+    singleton_nodes = set(list(range(c))).difference(set(nodes))
+    
+    
 
     if len(edges) < 1:
         raise Exception("Found only 1 edge. Provide longer trajectory or increase `r2`.")
@@ -138,6 +148,6 @@ def best_partition(coords, r1=10, r2=10, return_medoid_labels=False, label_singl
         if coords.shape[1] == 2:
             times = np.array(list(range(0,len(coords))))
             coords = np.hstack([coords, times.reshape(-1,1)])
-        return utils.compute_intervals(coords, coord_labels)
+        return utils.compute_intervals(coords, coord_labels,max_time_between)
     
     return coord_labels

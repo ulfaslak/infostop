@@ -215,7 +215,7 @@ def infomap_communities(nodes, edges):
         for k, v in infomapSimple.getModules().items()
     ])
 
-def compute_intervals(coords, coord_labels, distance_function = haversine):
+def compute_intervals(coords, coord_labels, max_time_between, distance_function = haversine):
     
     
     """Compute stop and moves intervals from the list of labels.
@@ -231,16 +231,14 @@ def compute_intervals(coords, coord_labels, distance_function = haversine):
     
     """
     trajectory = np.hstack([coords, coord_labels.reshape(-1,1)])
-    print(trajectory)
     
     final_trajectory = []
     
     #initialize values
     lat_prec, lon_prec, t_start, loc_prec = trajectory[0]  
-    time_prec = t_start
     t_end = t_start 
-    average_lat = [lat_prec]
-    average_lon = [lon_prec]
+    median_lat = [lat_prec]
+    median_lon = [lon_prec]
 
     #Loop through trajectory
     for lat, lon, time, loc in trajectory[1:]:
@@ -248,23 +246,34 @@ def compute_intervals(coords, coord_labels, distance_function = haversine):
         #if the location name has not changed update the end of the interval
         if (loc==loc_prec):
             t_end = time
-            average_lat.append(lat)
-            average_lon.append(lon)
+            median_lat.append(lat)
+            median_lon.append(lon)
             
             
         #if the location name has changed build the interval and reset values
         else:
-            final_trajectory.append([loc_prec, t_start,  t_end, np.median(average_lat), np.median(average_lon)])
+            t_end = min([t_end+max_time_between,time])
+            if loc_prec==-1:
+                final_trajectory.append([loc_prec, t_start,  t_end, np.nan, np.nan])
+            else:
+                final_trajectory.append([loc_prec, t_start,  t_end, np.median(median_lat), np.median(median_lon)])
+                
             t_start = time 
             t_end = time 
-            average_lat = []
-            average_lon = []
+            median_lat = []
+            median_lon = []
             
         
         #update current values
         loc_prec = loc
         lat_prec = lat
         lon_prec = lon
-        time_prec = time
+        
+    #Add last group
+    if loc_prec==-1:
+        final_trajectory.append([loc_prec, t_start,  t_end, np.nan, np.nan])
+    else:
+        final_trajectory.append([loc_prec, t_start,  t_end, np.median(median_lat), np.median(median_lon)])
+
         
     return final_trajectory
