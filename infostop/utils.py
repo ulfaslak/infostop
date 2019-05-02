@@ -1,6 +1,21 @@
 import infomap
 import numpy as np
 
+
+def euclidean(points_a, points_b, radians = False):
+    """ 
+    Calculate the euclidian distance bewteen points_a and points_b
+    points_a and points_b can be a single points or lists of points.
+    """
+    
+    distance = np.linalg.norm((points_a - points_b).reshape(-1,2),axis = 1)
+    
+    if points_a.ndim ==1:
+        return distance[0]
+    else:
+        return distance
+
+
 def haversine(points_a, points_b, radians=False):
     """ 
     Calculate the great-circle distance bewteen points_a and points_b
@@ -32,10 +47,12 @@ def haversine(points_a, points_b, radians=False):
     d = np.sin(lat * 0.5) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(lon * 0.5) ** 2
     h = 2 * 6371e3 * np.arcsin(np.sqrt(d))
     return h  # in meters
+        
+    
 
-def haversine_pdist(points, radians=False):
+def general_pdist(points, distance_function = haversine):
     """ 
-    Calculate the great-circle distance bewteen each pair in a set of points.
+    Calculate the distance bewteen each pair in a set of points given a distance function.
     
     Author: Piotr Sapiezynski
     Source: https://github.com/sapiezynski/haversinevec
@@ -52,24 +69,25 @@ def haversine_pdist(points, radians=False):
     c = points.shape[0]
     result = np.zeros((c*(c-1)//2,), dtype=np.float64)
     vec_idx = 0
-    if not radians:
-        points = np.radians(points)
+        
     for idx in range(0, c-1):
         ref = points[idx]
-        temp = haversine(points[idx+1:c,:], ref, radians=True)
+        temp = distance_function(points[idx+1:c,:], ref, radians = False)
+        #to be taken care of
         result[vec_idx:vec_idx+temp.shape[0]] = temp
         vec_idx += temp.shape[0]
     return result
 
-def group_time_distance(coords, r_C, min_staying_time, max_staying_time):
+def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distance_function):
     """Group temporally adjacent points if they are closer than r_C.
     
     Input
     -----
-        coords : array-like (shape=(N, 2))
+        coords : array-like (shape=(N, 2) or shape=(N,3))
         r_C : number (critical radius)
         min_staying_time : int
         max_staying_time : int
+        distance_function : function (used to compute distances)
     
     Output
     ------
@@ -83,7 +101,7 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time):
         for coord in coords[1:]:
             
             # Compute distance to current group
-            dist = haversine(np.median(current_group, axis=0), coord)
+            dist = distance_function(np.median(current_group, axis=0), coord)
         
             # Put in current group
             if dist <= r_C:
@@ -99,7 +117,7 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time):
         for coord in coords[1:]:
             
             # Compute distance to current group
-            dist = haversine(np.median(current_group[:, :2], axis=0), coord[:2])
+            dist = distance_function(np.median(current_group[:, :2], axis=0), coord[:2])
             time = current_group[-1, 2] - coord[2]
         
             # Put in current group
@@ -196,3 +214,66 @@ def infomap_communities(nodes, edges):
         (name_map_inverted[k], v)
         for k, v in infomapSimple.getModules().items()
     ])
+
+def compute_intervals(coords, coord_labels, max_time_between, distance_function = haversine):
+    
+    
+    """Compute stop and moves intervals from the list of labels.
+    
+    Input
+    -----
+        coords : array-like (shape=(N, 2) or shape=(N,3))
+        coord_labels: list of integers
+
+    Output
+    ------
+        intervals : array-like (shape=(N_intervals,4), location, start_time, end_time, latitude, longitude)
+    
+    """
+    trajectory = np.hstack([coords, coord_labels.reshape(-1,1)])
+    
+    final_trajectory = []
+    
+    #initialize values
+    lat_prec, lon_prec, t_start, loc_prec = trajectory[0]  
+    t_end = t_start 
+    median_lat = [lat_prec]
+    median_lon = [lon_prec]
+
+    #Loop through trajectory
+    for lat, lon, time, loc in trajectory[1:]:
+        
+        #if the location name has not changed update the end of the interval
+        if (loc==loc_prec):
+            t_end = time
+            median_lat.append(lat)
+            median_lon.append(lon)
+            
+            
+        #if the location name has changed build the interval and reset values
+        else:
+            t_end = min([t_end+max_time_between,time])
+            if loc_prec==-1:
+                final_trajectory.append([loc_prec, t_start,  t_end, np.nan, np.nan])
+            else:
+                final_trajectory.append([loc_prec, t_start,  t_end, np.median(median_lat), np.median(median_lon)])
+                
+            t_start = time 
+            t_end = time 
+            median_lat = []
+            median_lon = []
+            
+        
+        #update current values
+        loc_prec = loc
+        lat_prec = lat
+        lon_prec = lon
+        
+    #Add last group
+    if loc_prec==-1:
+        final_trajectory.append([loc_prec, t_start,  t_end, np.nan, np.nan])
+    else:
+        final_trajectory.append([loc_prec, t_start,  t_end, np.median(median_lat), np.median(median_lon)])
+
+        
+    return final_trajectory

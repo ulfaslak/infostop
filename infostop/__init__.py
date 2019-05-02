@@ -5,6 +5,7 @@ This package implements stop location detection using Infomap.
 """
 
 from .detect import best_partition
+from .detect import run_infomap
 
 name = "infostop"
 
