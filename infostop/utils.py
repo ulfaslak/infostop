@@ -215,7 +215,24 @@ def infomap_communities(nodes, edges):
         for k, v in infomapSimple.getModules().items()
     ])
 
-def compute_intervals(coords, coord_labels, max_time_between, distance_function = haversine):
+def distance_matrix(stop_events, distance_function):
+    """Compute distance matrix between list of points.
+
+    Input
+    -----
+        stop_events : array-like (shape=(N, 2))
+        distance_function : function (used to compute distances)
+
+    Output
+    ------
+        D : array-like (shape=(N, N))
+    """
+    c = stop_events.shape[0]
+    D = np.zeros((c, c)) * np.nan
+    D[np.triu_indices(c, 1)] = general_pdist(stop_events, distance_function)
+    return D
+
+def compute_intervals(coords, coord_labels, max_time_between, distance_function=haversine):
     
     
     """Compute stop and moves intervals from the list of labels.
