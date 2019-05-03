@@ -215,7 +215,7 @@ def infomap_communities(nodes, edges):
         for k, v in infomapSimple.getModules().items()
     ])
 
-def distance_matrix(stop_events, distance_function):
+def distance_matrix(stop_events, distance_function=haversine):
     """Compute distance matrix between list of points.
 
     Input

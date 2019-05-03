@@ -1,5 +1,10 @@
 import numpy as np
+import warnings
 from infostop import utils
+
+def best_partition(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function=utils.haversine, return_intervals=False, min_size=2):
+    warnings.warn("`best_partition` is deprecated and will be removed in a future version. Instead use `label_trace`.")
+    return label_trace(coords, r1, r2, label_singleton, min_staying_time, max_time_between, distance_function, return_intervals, min_size)
 
 def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function=utils.haversine, return_intervals=False, min_size=2):
     """Infer best stop-location labels from stationary points using infomap.

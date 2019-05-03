@@ -4,8 +4,9 @@
 This package implements stop location detection using Infomap.
 """
 
+from .detect import label_trace
 from .detect import best_partition
-from .detect import run_infomap
+from .detect import label_distance_matrix
 
 name = "infostop"
 
