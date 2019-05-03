@@ -7,7 +7,7 @@ def best_partition(coords, r1=10, r2=10, label_singleton=False, min_staying_time
     return label_trace(coords, r1, r2, label_singleton, min_staying_time, max_time_between, distance_function, return_intervals, min_size)
 
 def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function=utils.haversine, return_intervals=False, min_size=2):
-    """Infer best stop-location labels from stationary points using infomap.
+    """Infer stop-location labels from mobility trace. Dynamic points are labeled -1.
 
     The method entils the following steps:
         1.  Detect which points are stationary and store only the median (lat, lon) of
@@ -98,8 +98,63 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
         return utils.compute_intervals(coords, coord_labels,max_time_between)
     
     return coord_labels
+
+def label_static_points(coords, r2=10, label_singleton=True, distance_function=utils.haversine):
+    """Infer stop-location labels from static points.
+
+    The method entils the following steps:
+        1.  Compute the pairwise distances between all stationarity event medians.
+        2.  Construct a network that links nodes (event medians) that are within `r2` m.
+        3.  Cluster this network using two-level Infomap.
+        4.  Put the labels back info a vector that matches the input data in size.
+
+    Input
+    -----
+        coords : array-like (N, 2)
+        r2 : number
+            Max distance between stationary points to form an edge.
+        label_singleton: bool
+            If True, give stationary locations that was only visited once their own
+            label. If False, label them as outliers (-1)
+        distance_function : function
+            The function to use to compute distances (can be utils.haversine, utils.euclidean)
+            
+    Output
+    ------
+        out : array-like (N, )
+            Array of labels matching input in length. Detected stop locations are labeled from 0
+            and up, and typically locations with more observations have lower indices. If
+            `label_singleton=False`, coordinated with no neighbors within distance `r2` are
+            labeled -1.
+    """
+
+    # ASSERTIONS
+    # ----------
+    try:
+        assert coords.shape[1] == 2
+    except AssertionError:
+        raise AssertionError("Number of columns must be 2")        
+            
+    if distance_function == utils.haversine:
+        try:
+            assert np.min(coords[:, 0]) > -90
+            assert np.max(coords[:, 0]) < 90
+        except AssertionError:
+            raise AssertionError("Column 0 (latitude) must have values between -90 and 90")
+        try:
+            assert np.min(coords[:, 1]) > -180
+            assert np.max(coords[:, 1]) < 180
+        except AssertionError:
+            raise AssertionError("Column 1 (longitude) must have values between -180 and 180")
+
+    # Create distance matrix
+    D = utils.distance_matrix(stop_events, distance_function)
+
+    # Create network and run infomap
+    return label_distance_matrix(D, r2, label_singleton)
     
-def label_distance_matrix(D, r2, label_singleton):
+
+def label_distance_matrix(D, r2, label_singleton=True):
     """Infer infomap clusters from distance matrix and link distance threshold.
 
     This function is for clustering points in any space given their pairwise distances.
@@ -119,10 +174,10 @@ def label_distance_matrix(D, r2, label_singleton):
     Output
     ------
         out : array-like (N, )
-            Array of labels matching input in length. Non-stationary locations and
-            outliers (locations visited only once if `label_singleton == False`) are
-            labeled as -1. Detected stop locations are labeled from 0 and up, and
-            typically locations with more observations have lower indices.
+            Array of labels matching input in length. Detected stop locations are labeled from 0
+            and up, and typically locations with more observations have lower indices. If
+            `label_singleton=False`, coordinated with no neighbors within distance `r2` are
+            labeled -1.
     """
     # Construct network
     edges = np.column_stack(np.where(D<r2))
@@ -134,7 +189,7 @@ def label_distance_matrix(D, r2, label_singleton):
 
     # Raise exception is network is too sparse.
     if len(edges) < 1:
-        raise Exception("Found only 1 edge. Provide longer trajectory or increase `r2`.")
+        raise Exception("No edges added because `r2 < np.nanmin(D)`. The minimum and median pairwise distances are %.03f and %.03f, respectively, consider setting `r2` with regard to these." % (np.nanmin(D), np.nanmedian(D)))
         
     # Infer the partition with infomap. Partiton looks like `{node: community, ...}`
     partition = utils.infomap_communities(list(nodes), edges)

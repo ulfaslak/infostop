@@ -10,7 +10,7 @@ from .detect import label_distance_matrix
 
 name = "infostop"
 
-__version__ = "0.0.9"
+__version__ = "0.0.11"
 __author__ = "Ulf Aslak"
 __copyright__ = "Copyright 2019, Ulf Aslak"
 __credits__ = ["Ulf Aslak"]
