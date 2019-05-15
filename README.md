@@ -21,7 +21,7 @@ A stop location solution can be obtained using:
 
 ```Python
 >>> import infostop
->>> labels = infostop.best_partition(data)
+>>> labels = infostop.label_trace(data)
 ```
 
 Here, `labels` matches `data` in size, and can easily be mapped back onto `data`:

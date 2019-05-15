@@ -194,7 +194,7 @@ def infomap_communities(nodes, edges):
     
     # Add nodes
     for n in nodes:
-        network.addNode(name_map[n])
+        network.addNode(name_map[n]).disown()
 
     # Add links (weighted)
     if len(edges[0]) == 2:
