@@ -148,7 +148,7 @@ def label_static_points(coords, r2=10, label_singleton=True, distance_function=u
             raise AssertionError("Column 1 (longitude) must have values between -180 and 180")
 
     # Create distance matrix
-    D = utils.distance_matrix(stop_events, distance_function)
+    D = utils.distance_matrix(coords, distance_function)
 
     # Create network and run infomap
     return label_distance_matrix(D, r2, label_singleton)
