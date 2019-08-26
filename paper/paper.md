@@ -35,7 +35,7 @@ Infostop has three functions designed for the user (see Fig. 1).
 2. `label_static_points`: **Given a collection of locations points, assign cluster labels to each point.** It is assumes that points correspond to stationary location measurements; therefore Infostop only needs to execute steps 1.b-1.c.
 3. `label_distance_matrix`: **Given a distance matrix, assign cluster labels to each point.** Here, the user already knows the distance matrix of the points they want to cluster, and Infostop therefore only executes step 1.c.
 
-![Function dependency network](/Users/ulfaslak/Documents/git/infostop/paper/function_network.png)
+![Function dependency network](function_network.png)
 
 The default distance metric is the haversine distance, thus expecting the input location measurements to be (lat, lon) coordinates. However, the user can easily specify another distance function if they like. As such, Infostop—and in particular its `label_static_points` function—can be used as **a general clustering algorithm in any space that allows distance measurement between points**.
 
