@@ -1,0 +1,268 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Label location trace &mdash; infostop 0.0.13 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="author" title="About these documents" href="../about.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Detect module" href="../reference/reference.html" />
+    <link rel="prev" title="About this project" href="../about.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> infostop
+          
+
+          
+            
+            <img src="../_static/new_logo_very_small_2width.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.13
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../about.html">About this project</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Usage</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Label location trace</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#label-timestamped-trace">Label timestamped trace</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../reference/reference.html">Detect module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/reference.html#module-infostop.utils">Utils module</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">infostop</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Label location trace</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/usage/usage.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="label-location-trace">
+<span id="usage"></span><h1>Label location trace<a class="headerlink" href="#label-location-trace" title="Permalink to this headline">¶</a></h1>
+<p>For a time-ordered series of coordinates, such as a GPS trace, annotate each point with a location label. Such a coordinate series may look like:</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">array</span><span class="p">([[</span> <span class="mf">55.75259295</span><span class="p">,</span>  <span class="mf">12.34353885</span> <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">55.7525908</span> <span class="p">,</span>  <span class="mf">12.34353145</span> <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">55.7525876</span> <span class="p">,</span>  <span class="mf">12.3435386</span>  <span class="p">],</span>
+       <span class="o">...</span><span class="p">,</span>
+       <span class="p">[</span> <span class="mf">63.40379175</span><span class="p">,</span>  <span class="mf">10.40477095</span> <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">63.4037841</span> <span class="p">,</span>  <span class="mf">10.40480265</span> <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">63.403787</span>  <span class="p">,</span>  <span class="mf">10.4047871</span>  <span class="p">]])</span>
+</pre></div>
+</div>
+<p>The trace can then be labeled using <a class="reference internal" href="../reference/reference.html#infostop.detect.label_trace" title="infostop.detect.label_trace"><code class="xref py py-mod docutils literal notranslate"><span class="pre">infostop.detect.label_trace</span></code></a>:</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">labels</span> <span class="o">=</span> <span class="n">infostop</span><span class="o">.</span><span class="n">label_trace</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="n">labels</span>
+<span class="c1"># array([0, 0, -1, ..., 164, 164, 164])</span>
+</pre></div>
+</div>
+<p>And stacked with the input data:</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span>    <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">data</span><span class="p">,</span> <span class="n">labels</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+<span class="n">array</span><span class="p">([[</span> <span class="mf">55.75259295</span><span class="p">,</span>  <span class="mf">12.34353885</span><span class="p">,</span>   <span class="mf">0.</span>        <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">55.7525908</span> <span class="p">,</span>  <span class="mf">12.34353145</span><span class="p">,</span>   <span class="mf">0.</span>        <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">55.7525876</span> <span class="p">,</span>  <span class="mf">12.3435386</span> <span class="p">,</span>  <span class="o">-</span><span class="mf">1.</span>        <span class="p">],</span>
+       <span class="o">...</span><span class="p">,</span>
+       <span class="p">[</span> <span class="mf">63.40379175</span><span class="p">,</span>  <span class="mf">10.40477095</span><span class="p">,</span> <span class="mf">164.</span>        <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">63.4037841</span> <span class="p">,</span>  <span class="mf">10.40480265</span><span class="p">,</span> <span class="mf">164.</span>        <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">63.403787</span>  <span class="p">,</span>  <span class="mf">10.4047871</span> <span class="p">,</span> <span class="mf">164.</span>        <span class="p">]])</span>
+</pre></div>
+</div>
+<p>Labels 0 and 164 in this case correspond to locations where the user was static, and possibly returned. The label -1 is given to location measurements which are recorded while the user is not stationary.</p>
+<p>It is relevant for the user to consider first setting the <code class="docutils literal notranslate"><span class="pre">r1</span></code> parameter in <a class="reference internal" href="../reference/reference.html#infostop.detect.label_trace" title="infostop.detect.label_trace"><code class="xref py py-mod docutils literal notranslate"><span class="pre">infostop.detect.label_trace</span></code></a>, which sets the threshold for the maximum distance between two consecutive location measurements allowed within the same stop location. As a rule of thumb, <code class="docutils literal notranslate"><span class="pre">r1</span></code> should be slightly greater than the standard deviation of the uncertainty distribution on the location measurement.</p>
+<p>To get bigger stop locations consider increasing <code class="docutils literal notranslate"><span class="pre">r2</span></code>, which sets the distance threshold for link creation.</p>
+<p>If the input data is not GPS points, the <code class="docutils literal notranslate"><span class="pre">distance_function</span></code> parameter should be set to a valid metric, and <code class="docutils literal notranslate"><span class="pre">r1</span></code> and <code class="docutils literal notranslate"><span class="pre">r2</span></code> should most likely be specified to something meaningful. Per default, Infostop assumes that points are (lat, lon) and uses the haversine distance function, where the thresholds are given in meters.</p>
+<div class="section" id="label-timestamped-trace">
+<h2>Label timestamped trace<a class="headerlink" href="#label-timestamped-trace" title="Permalink to this headline">¶</a></h2>
+<p>In a third (rightmost) column, timestamps can be listed so the input series looks like:</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">array</span><span class="p">([[</span> <span class="mf">55.75259295</span><span class="p">,</span>  <span class="mf">12.34353885</span><span class="p">,</span>  <span class="mi">1356998400</span> <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">55.7525908</span> <span class="p">,</span>  <span class="mf">12.34353145</span><span class="p">,</span>  <span class="mi">1356998700</span> <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">55.7525876</span> <span class="p">,</span>  <span class="mf">12.3435386</span> <span class="p">,</span>  <span class="mi">1356999000</span> <span class="p">],</span>
+       <span class="o">...</span><span class="p">,</span>
+       <span class="p">[</span> <span class="mf">63.40379175</span><span class="p">,</span>  <span class="mf">10.40477095</span><span class="p">,</span>  <span class="mi">1357085400</span> <span class="p">],</span>
+       <span class="p">[</span> <span class="mf">63.4037841</span> <span class="p">,</span>  <span class="mf">10.40480265</span><span class="p">,</span>  <span class="mi">1357085700</span> <span class="p">],</span>
+       <span class="p">[</span> <span class="mi">63403787</span>  <span class="p">,</span>  <span class="mf">10.4047871</span>  <span class="p">,</span>  <span class="mi">1357086000</span> <span class="p">]])</span>
+</pre></div>
+</div>
+<p>This is useful, because it allows the user to specify <code class="docutils literal notranslate"><span class="pre">min_staying_time</span></code> which sets a lower bound on how short stops can be, and <code class="docutils literal notranslate"><span class="pre">max_time_between</span></code> which sets an upper bound on the longest allowed time between two samples before a new stop event is created.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../reference/reference.html" class="btn btn-neutral float-right" title="Detect module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../about.html" class="btn btn-neutral float-left" title="About this project" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Ulf Aslak
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

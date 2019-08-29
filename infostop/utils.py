@@ -57,13 +57,13 @@ def general_pdist(points, distance_function = haversine):
     Author: Piotr Sapiezynski
     Source: https://github.com/sapiezynski/haversinevec
 
-    Input
-    -----
+    Parameters
+    ----------
         points : array-like (shape=(N, 2))
             (lat, lon) in degree or radians (default is degree)
 
-    Output
-    ------
+    Returns
+    -------
         result : array-like (shape=(N*(N-1)//2, ))
     """ 
     c = points.shape[0]
@@ -81,16 +81,16 @@ def general_pdist(points, distance_function = haversine):
 def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distance_function):
     """Group temporally adjacent points if they are closer than r_C.
     
-    Input
-    -----
+    Parameters
+    ----------
         coords : array-like (shape=(N, 2) or shape=(N,3))
         r_C : number (critical radius)
         min_staying_time : int
         max_staying_time : int
         distance_function : function (used to compute distances)
     
-    Output
-    ------
+    Returns
+    -------
         groups : list-of-list
             Each list is a group of points
     """
@@ -141,15 +141,15 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distanc
 def get_stationary_events(groups, min_size=2):
     """Convert groups of multiple points (stationary location events) to median-of-group points.
     
-    Input
-    -----
+    Parameters
+    ----------
         groups : list-of-list
             Each list is a group of points
         min_size : int
             Minimum size of group to consider it stationary (default: 1)
             
-    Output
-    ------
+    Returns
+    -------
         stat_coords : array-like (M, 2)
             Medioids of stationary groups
         event_map : list
@@ -172,13 +172,13 @@ def get_stationary_events(groups, min_size=2):
 def infomap_communities(nodes, edges):
     """Two-level partition of single-layer network with Infomap.
     
-    Input
-    -----
+    Parameters
+    ----------
         edges : list of tuples
             Example: `("cat", "dog", 1)` or (0, 1)
 
-    Output
-    ------
+    Returns
+    -------
         out : dict (node-community hash map)
     """
     # Represent node names as indices
@@ -218,13 +218,13 @@ def infomap_communities(nodes, edges):
 def distance_matrix(stop_events, distance_function=haversine):
     """Compute distance matrix between list of points.
 
-    Input
-    -----
+    Parameters
+    ----------
         stop_events : array-like (shape=(N, 2))
         distance_function : function (used to compute distances)
 
-    Output
-    ------
+    Returns
+    -------
         D : array-like (shape=(N, N))
     """
     c = stop_events.shape[0]
@@ -237,13 +237,13 @@ def compute_intervals(coords, coord_labels, max_time_between, distance_function=
     
     """Compute stop and moves intervals from the list of labels.
     
-    Input
-    -----
+    Parameters
+    ----------
         coords : array-like (shape=(N, 2) or shape=(N,3))
         coord_labels: list of integers
 
-    Output
-    ------
+    Returns
+    -------
         intervals : array-like (shape=(N_intervals,4), location, start_time, end_time, latitude, longitude)
     
     """

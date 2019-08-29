@@ -1,15 +1,7 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-This package implements stop location detection using Infomap.
+Contains a bunch of information about this package.
 """
-
-from .detect import label_trace
-from .detect import best_partition
-from .detect import label_static_points
-from .detect import label_distance_matrix
-
-name = "infostop"
 
 __version__ = "0.0.13"
 __author__ = "Ulf Aslak, Laura Alessandretti"

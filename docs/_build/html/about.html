@@ -1,0 +1,299 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>About this project &mdash; infostop 0.0.13 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="author" title="About these documents" href="#" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Label location trace" href="usage/usage.html" />
+    <link rel="prev" title="Infostop - Stop location detection" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> infostop
+          
+
+          
+            
+            <img src="_static/new_logo_very_small_2width.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.13
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">About this project</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-example">Quick example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-should-i-use-infostop">Why should I use Infostop</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pros">Pros</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cons">Cons</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#install">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bug-reports-contributing">Bug reports &amp; contributing</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Usage</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="usage/usage.html">Label location trace</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="reference/reference.html">Detect module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/reference.html#module-infostop.utils">Utils module</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">infostop</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>About this project</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/about.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="about-this-project">
+<h1>About this project<a class="headerlink" href="#about-this-project" title="Permalink to this headline">¶</a></h1>
+<p>Infostop is a minimal and fast tool for performing network clustering on spacial data,
+and in particular it is well suited for detecting stop locations, or points of interest,
+in GPS data.</p>
+<div class="section" id="quick-example">
+<h2>Quick example<a class="headerlink" href="#quick-example" title="Permalink to this headline">¶</a></h2>
+<p>For unlabeled GPS trace <cite>data</cite>:</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">infostop</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="go">    &gt;&gt;&gt; data</span>
+<span class="go">    array([[ 55.75259295,  12.34353885 ],</span>
+<span class="go">           [ 55.7525908 ,  12.34353145 ],</span>
+<span class="go">           [ 55.7525876 ,  12.3435386  ],</span>
+<span class="go">           ...,</span>
+<span class="go">           [ 63.40379175,  10.40477095 ],</span>
+<span class="go">           [ 63.4037841 ,  10.40480265 ],</span>
+<span class="go">           [ 63.403787  ,  10.4047871  ]])</span>
+<span class="go">    &gt;&gt;&gt; labels = infostop.label_trace(data)</span>
+<span class="go">    &gt;&gt;&gt; np.hstack([data, labels.reshape(-1, 1)])</span>
+<span class="go">    array([[ 55.75259295,  12.34353885,   0.        ],</span>
+<span class="go">           [ 55.7525908 ,  12.34353145,   0.        ],</span>
+<span class="go">           [ 55.7525876 ,  12.3435386 ,  1-.        ],</span>
+<span class="go">           ...,</span>
+<span class="go">           [ 63.40379175,  10.40477095, 164.        ],</span>
+<span class="go">           [ 63.4037841 ,  10.40480265, 164.        ],</span>
+<span class="go">           [ 63.403787  ,  10.4047871 , 164.        ]])</span>
+</pre></div>
+</div>
+<p>The coordinates can now be plotted onto a map, colored by the assigned labels:</p>
+<div class="figure">
+<img alt="_images/infostop_example_map.png" src="_images/infostop_example_map.png" />
+</div>
+</div>
+<div class="section" id="why-should-i-use-infostop">
+<h2>Why should I use Infostop<a class="headerlink" href="#why-should-i-use-infostop" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="pros">
+<h3>Pros<a class="headerlink" href="#pros" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Quick Python based API for finding important places in your GPS data</li>
+<li>Installable with pip, no compiling needed</li>
+<li>No external program needed</li>
+<li>Cross-platform</li>
+<li>More meaningful clustering solutions than DBSCAN (or similar) based methods</li>
+</ul>
+</div>
+<div class="section" id="cons">
+<h3>Cons<a class="headerlink" href="#cons" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Not as fast as DBSCAN based methods (although still relatively fast)</li>
+<li>No plotting options yet</li>
+</ul>
+</div>
+</div>
+<div class="section" id="install">
+<h2>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">infostop</span>
+</pre></div>
+</div>
+<p>Make sure to read the <code class="docutils literal notranslate"><span class="pre">README.md</span></code> in the <a class="reference external" href="https://github.com/ulfaslak/infostop">public repository</a> for notes on dependencies and installation.</p>
+<p><code class="docutils literal notranslate"><span class="pre">infostop</span></code> depends on the following packages which will be
+installed by <code class="docutils literal notranslate"><span class="pre">pip</span></code> during the installation process</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">numpy&gt;=0.14</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">infomap&gt;=3.0.12</span></code></li>
+</ul>
+</div>
+<div class="section" id="bug-reports-contributing">
+<h2>Bug reports &amp; contributing<a class="headerlink" href="#bug-reports-contributing" title="Permalink to this headline">¶</a></h2>
+<p>You can contribute to the <a class="reference external" href="https://github.com/ulfaslak/infostop">public repository</a> and <a class="reference external" href="https://github.com/ulfaslak/issues/issues/new">raise issues</a> there.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="usage/usage.html" class="btn btn-neutral float-right" title="Label location trace" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral float-left" title="Infostop - Stop location detection" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Ulf Aslak
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

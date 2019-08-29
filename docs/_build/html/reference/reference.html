@@ -1,0 +1,531 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Detect module &mdash; infostop 0.0.13 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="author" title="About these documents" href="../about.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Label location trace" href="../usage/usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> infostop
+          
+
+          
+            
+            <img src="../_static/new_logo_very_small_2width.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.13
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../about.html">About this project</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Usage</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../usage/usage.html">Label location trace</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Detect module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#module-infostop.utils">Utils module</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">infostop</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Detect module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/reference/reference.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-infostop.detect">
+<span id="detect-module"></span><h1>Detect module<a class="headerlink" href="#module-infostop.detect" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="infostop.detect.best_partition">
+<code class="descclassname">infostop.detect.</code><code class="descname">best_partition</code><span class="sig-paren">(</span><em>coords</em>, <em>r1=10</em>, <em>r2=10</em>, <em>label_singleton=False</em>, <em>min_staying_time=300</em>, <em>max_time_between=86400</em>, <em>distance_function=&lt;function haversine&gt;</em>, <em>return_intervals=False</em>, <em>min_size=2</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/detect.html#best_partition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.detect.best_partition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deprecated. Use label <cite>label_trace</cite> instead.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.detect.get_stationary_events">
+<code class="descclassname">infostop.detect.</code><code class="descname">get_stationary_events</code><span class="sig-paren">(</span><em>coords</em>, <em>r1</em>, <em>min_size</em>, <em>min_staying_time</em>, <em>max_time_between</em>, <em>distance_function</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/detect.html#get_stationary_events"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.detect.get_stationary_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reduce location trace to the sequence of stationary events.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>coords</strong> (<em>array-like</em><em> (</em><em>shape=</em><em>(</em><em>N</em><em>, </em><em>2</em><em>)</em><em>)</em>) – </li>
+<li><strong>r1</strong> (<em>number</em><em> (</em><em>critical radius</em><em>)</em>) – </li>
+<li><strong>min_staying_time</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – </li>
+<li><strong>max_time_between</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>stop_events</strong> (<em>np.array (&lt;N, 2)</em>)</li>
+<li><strong>event_map</strong> (<em>list</em>) – Maps index to input-data indices.</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.detect.label_distance_matrix">
+<code class="descclassname">infostop.detect.</code><code class="descname">label_distance_matrix</code><span class="sig-paren">(</span><em>D</em>, <em>r2</em>, <em>label_singleton=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/detect.html#label_distance_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.detect.label_distance_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Infer infomap clusters from distance matrix and link distance threshold.</p>
+<p>This function is for clustering points in any space given their pairwise distances.
+If you have static locations you can easily compute the distance matrix with the
+<cite>utils.distance_matrix</cite> function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>D</strong> (<em>array-like</em><em> (</em><em>shape=</em><em>(</em><em>N</em><em>, </em><em>N</em><em>)</em><em>)</em>) – Distance matrix. Only upper triangle is considered.</li>
+<li><strong>r2</strong> (<em>number</em>) – Max distance between stationary points to form an edge.</li>
+<li><strong>label_singleton</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – If True, give stationary locations that was only visited once their own
+label. If False, label them as outliers (-1)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> – Array of labels matching input in length. Detected stop locations are labeled from 0
+and up, and typically locations with more observations have lower indices. If
+<cite>label_singleton=False</cite>, coordinated with no neighbors within distance <cite>r2</cite> are
+labeled -1.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array-like (N, )</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.detect.label_static_points">
+<code class="descclassname">infostop.detect.</code><code class="descname">label_static_points</code><span class="sig-paren">(</span><em>coords</em>, <em>r2=10</em>, <em>label_singleton=True</em>, <em>distance_function=&lt;function haversine&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/detect.html#label_static_points"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.detect.label_static_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Infer stop-location labels from static points.</p>
+<dl class="docutils">
+<dt>The method entils the following steps:</dt>
+<dd><ol class="first last arabic simple">
+<li>Compute the pairwise distances between all stationarity event medians.</li>
+<li>Construct a network that links nodes (event medians) that are within <cite>r2</cite> m.</li>
+<li>Cluster this network using two-level Infomap.</li>
+<li>Put the labels back info a vector that matches the input data in size.</li>
+</ol>
+</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>coords</strong> (<em>array-like</em><em> (</em><em>N</em><em>, </em><em>2</em><em>)</em>) – </li>
+<li><strong>r2</strong> (<em>number</em>) – Max distance between stationary points to form an edge.</li>
+<li><strong>label_singleton</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – If True, give stationary locations that was only visited once their own
+label. If False, label them as outliers (-1)</li>
+<li><strong>distance_function</strong> (<em>function</em>) – The function to use to compute distances (can be utils.haversine, utils.euclidean)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> – Array of labels matching input in length. Detected stop locations are labeled from 0
+and up, and typically locations with more observations have lower indices. If
+<cite>label_singleton=False</cite>, coordinated with no neighbors within distance <cite>r2</cite> are
+labeled -1.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array-like (N, )</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.detect.label_trace">
+<code class="descclassname">infostop.detect.</code><code class="descname">label_trace</code><span class="sig-paren">(</span><em>coords</em>, <em>r1=10</em>, <em>r2=10</em>, <em>label_singleton=False</em>, <em>min_staying_time=300</em>, <em>max_time_between=86400</em>, <em>distance_function=&lt;function haversine&gt;</em>, <em>return_intervals=False</em>, <em>min_size=2</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/detect.html#label_trace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.detect.label_trace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Infer stop-location labels from mobility trace. Dynamic points are labeled -1.</p>
+<dl class="docutils">
+<dt>The method entils the following steps:</dt>
+<dd><ol class="first last arabic simple">
+<li>Detect which points are stationary and store only the median (lat, lon) of
+each stationarity event. A point belongs to a stationarity event if it is
+less than <cite>r1</cite> meters away from the median of the time-previous collection
+of stationary points.</li>
+<li>Compute the pairwise distances between all stationarity event medians.</li>
+<li>Construct a network that links nodes (event medians) that are within <cite>r2</cite> m.</li>
+<li>Cluster this network using two-level Infomap.</li>
+<li>Put the labels back info a vector that matches the input data in size.</li>
+</ol>
+</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>coords</strong> (<em>array-like</em><em> (</em><em>N</em><em>, </em><em>2</em><em>) or </em><em>(</em><em>N</em><em>,</em><em>3</em><em>)</em>) – </li>
+<li><strong>r1</strong> (<em>number</em>) – Max distance between time-consecutive points to label them as stationary</li>
+<li><strong>r2</strong> (<em>number</em>) – Max distance between stationary points to form an edge.</li>
+<li><strong>label_singleton</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – If True, give stationary locations that was only visited once their own
+label. If False, label them as outliers (-1)</li>
+<li><strong>min_staying_time</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The shortest duration that can constitute a stop. Only used if timestamp column
+is provided</li>
+<li><strong>max_time_between</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The longest duration that can constitute a stop. Only used if timestamp column
+is provided</li>
+<li><strong>distance_function</strong> (<em>function</em>) – The function to use to compute distances (can be utils.haversine, utils.euclidean)</li>
+<li><strong>return_intervals</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – If True, aggregate the final trajectory into intervals (default: False)</li>
+<li><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – Minimum size of group to consider it stationary (default: 2)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> – Array of labels matching input in length. Non-stationary locations and
+outliers (locations visited only once if <cite>label_singleton == False</cite>) are
+labeled as -1. Detected stop locations are labeled from 0 and up, and
+typically locations with more observations have lower indices.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array-like (N, )</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-infostop.utils">
+<span id="utils-module"></span><h1>Utils module<a class="headerlink" href="#module-infostop.utils" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="infostop.utils.compute_intervals">
+<code class="descclassname">infostop.utils.</code><code class="descname">compute_intervals</code><span class="sig-paren">(</span><em>coords</em>, <em>coord_labels</em>, <em>max_time_between</em>, <em>distance_function=&lt;function haversine&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/utils.html#compute_intervals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.utils.compute_intervals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute stop and moves intervals from the list of labels.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>coords</strong> (<em>array-like</em><em> (</em><em>shape=</em><em>(</em><em>N</em><em>, </em><em>2</em><em>) or </em><em>shape=</em><em>(</em><em>N</em><em>,</em><em>3</em><em>)</em><em>)</em>) – </li>
+<li><strong>coord_labels</strong> (<em>list of integers</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>intervals</strong></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array-like (shape=(N_intervals,4), location, start_time, end_time, latitude, longitude)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.utils.distance_matrix">
+<code class="descclassname">infostop.utils.</code><code class="descname">distance_matrix</code><span class="sig-paren">(</span><em>stop_events</em>, <em>distance_function=&lt;function haversine&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/utils.html#distance_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.utils.distance_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute distance matrix between list of points.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>stop_events</strong> (<em>array-like</em><em> (</em><em>shape=</em><em>(</em><em>N</em><em>, </em><em>2</em><em>)</em><em>)</em>) – </li>
+<li><strong>distance_function</strong> (<em>function</em><em> (</em><em>used to compute distances</em><em>)</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>D</strong></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array-like (shape=(N, N))</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.utils.euclidean">
+<code class="descclassname">infostop.utils.</code><code class="descname">euclidean</code><span class="sig-paren">(</span><em>points_a</em>, <em>points_b</em>, <em>radians=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/utils.html#euclidean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.utils.euclidean" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the euclidian distance bewteen points_a and points_b
+points_a and points_b can be a single points or lists of points.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.utils.general_pdist">
+<code class="descclassname">infostop.utils.</code><code class="descname">general_pdist</code><span class="sig-paren">(</span><em>points</em>, <em>distance_function=&lt;function haversine&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/utils.html#general_pdist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.utils.general_pdist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the distance bewteen each pair in a set of points given a distance function.</p>
+<p>Author: Piotr Sapiezynski
+Source: <a class="reference external" href="https://github.com/sapiezynski/haversinevec">https://github.com/sapiezynski/haversinevec</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>points</strong> (<em>array-like</em><em> (</em><em>shape=</em><em>(</em><em>N</em><em>, </em><em>2</em><em>)</em><em>)</em>) – (lat, lon) in degree or radians (default is degree)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>result</strong></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">array-like (shape=(N*(N-1)//2, ))</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.utils.get_stationary_events">
+<code class="descclassname">infostop.utils.</code><code class="descname">get_stationary_events</code><span class="sig-paren">(</span><em>groups</em>, <em>min_size=2</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/utils.html#get_stationary_events"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.utils.get_stationary_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert groups of multiple points (stationary location events) to median-of-group points.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>groups</strong> (<em>list-of-list</em>) – Each list is a group of points</li>
+<li><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – Minimum size of group to consider it stationary (default: 1)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>stat_coords</strong> (<em>array-like (M, 2)</em>) – Medioids of stationary groups</li>
+<li><strong>event_map</strong> (<em>list</em>) – Maps event index to input-data index. Used for mapping label ids onto each (lat, lon) point.</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.utils.group_time_distance">
+<code class="descclassname">infostop.utils.</code><code class="descname">group_time_distance</code><span class="sig-paren">(</span><em>coords</em>, <em>r_C</em>, <em>min_staying_time</em>, <em>max_staying_time</em>, <em>distance_function</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/utils.html#group_time_distance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.utils.group_time_distance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Group temporally adjacent points if they are closer than r_C.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>coords</strong> (<em>array-like</em><em> (</em><em>shape=</em><em>(</em><em>N</em><em>, </em><em>2</em><em>) or </em><em>shape=</em><em>(</em><em>N</em><em>,</em><em>3</em><em>)</em><em>)</em>) – </li>
+<li><strong>r_C</strong> (<em>number</em><em> (</em><em>critical radius</em><em>)</em>) – </li>
+<li><strong>min_staying_time</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – </li>
+<li><strong>max_staying_time</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – </li>
+<li><strong>distance_function</strong> (<em>function</em><em> (</em><em>used to compute distances</em><em>)</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>groups</strong> – Each list is a group of points</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list-of-list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.utils.haversine">
+<code class="descclassname">infostop.utils.</code><code class="descname">haversine</code><span class="sig-paren">(</span><em>points_a</em>, <em>points_b</em>, <em>radians=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/utils.html#haversine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.utils.haversine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the great-circle distance bewteen points_a and points_b
+points_a and points_b can be a single points or lists of points.</p>
+<p>Author: Piotr Sapiezynski
+Source: <a class="reference external" href="https://github.com/sapiezynski/haversinevec">https://github.com/sapiezynski/haversinevec</a></p>
+<p>Using this because it is vectorized (stupid fast).</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="infostop.utils.infomap_communities">
+<code class="descclassname">infostop.utils.</code><code class="descname">infomap_communities</code><span class="sig-paren">(</span><em>nodes</em>, <em>edges</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/infostop/utils.html#infomap_communities"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#infostop.utils.infomap_communities" title="Permalink to this definition">¶</a></dt>
+<dd><p>Two-level partition of single-layer network with Infomap.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>edges</strong> (<em>list of tuples</em>) – Example: <cite>(“cat”, “dog”, 1)</cite> or (0, 1)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>out</strong></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a> (node-community hash map)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../usage/usage.html" class="btn btn-neutral float-left" title="Label location trace" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Ulf Aslak
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

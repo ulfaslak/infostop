@@ -2,9 +2,6 @@ import numpy as np
 import warnings
 from infostop import utils
 
-def best_partition(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function=utils.haversine, return_intervals=False, min_size=2):
-    warnings.warn("`best_partition` is deprecated and will be removed in a future version. Instead use `label_trace`.")
-    return label_trace(coords, r1, r2, label_singleton, min_staying_time, max_time_between, distance_function, return_intervals, min_size)
 
 def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function=utils.haversine, return_intervals=False, min_size=2):
     """Infer stop-location labels from mobility trace. Dynamic points are labeled -1.
@@ -19,8 +16,8 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
         4.  Cluster this network using two-level Infomap.
         5.  Put the labels back info a vector that matches the input data in size.
     
-    Input
-    -----
+    Parameters
+    ----------
         coords : array-like (N, 2) or (N,3)
         r1 : number
             Max distance between time-consecutive points to label them as stationary
@@ -43,8 +40,8 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
             Minimum size of group to consider it stationary (default: 2)
             
 
-    Output
-    ------
+    Returns
+    -------
         out : array-like (N, )
             Array of labels matching input in length. Non-stationary locations and
             outliers (locations visited only once if `label_singleton == False`) are
@@ -108,8 +105,8 @@ def label_static_points(coords, r2=10, label_singleton=True, distance_function=u
         3.  Cluster this network using two-level Infomap.
         4.  Put the labels back info a vector that matches the input data in size.
 
-    Input
-    -----
+    Parameters
+    ----------
         coords : array-like (N, 2)
         r2 : number
             Max distance between stationary points to form an edge.
@@ -119,8 +116,8 @@ def label_static_points(coords, r2=10, label_singleton=True, distance_function=u
         distance_function : function
             The function to use to compute distances (can be utils.haversine, utils.euclidean)
             
-    Output
-    ------
+    Returns
+    -------
         out : array-like (N, )
             Array of labels matching input in length. Detected stop locations are labeled from 0
             and up, and typically locations with more observations have lower indices. If
@@ -161,8 +158,8 @@ def label_distance_matrix(D, r2, label_singleton=True):
     If you have static locations you can easily compute the distance matrix with the
     `utils.distance_matrix` function.
     
-    Input
-    -----
+    Parameters
+    ----------
         D : array-like (shape=(N, N))
             Distance matrix. Only upper triangle is considered.
         r2 : number
@@ -171,8 +168,8 @@ def label_distance_matrix(D, r2, label_singleton=True):
             If True, give stationary locations that was only visited once their own
             label. If False, label them as outliers (-1)
             
-    Output
-    ------
+    Returns
+    -------
         out : array-like (N, )
             Array of labels matching input in length. Detected stop locations are labeled from 0
             and up, and typically locations with more observations have lower indices. If
@@ -211,15 +208,15 @@ def label_distance_matrix(D, r2, label_singleton=True):
 def get_stationary_events(coords, r1, min_size, min_staying_time, max_time_between, distance_function):
     """Reduce location trace to the sequence of stationary events.
 
-    Input
-    -----
+    Parameters
+    ----------
         coords : array-like (shape=(N, 2))
         r1 : number (critical radius)
         min_staying_time : int
         max_time_between : int
 
-    Output
-    ------
+    Returns
+    -------
         stop_events : np.array (<N, 2)
         event_map : list
             Maps index to input-data indices.
@@ -228,3 +225,9 @@ def get_stationary_events(coords, r1, min_size, min_staying_time, max_time_betwe
     groups = utils.group_time_distance(coords, r1, min_staying_time, max_time_between, distance_function)
     stop_events, event_map = utils.get_stationary_events(groups, min_size)
     return stop_events, event_map
+
+
+def best_partition(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function=utils.haversine, return_intervals=False, min_size=2):
+    """Deprecated. Use label `label_trace` instead."""
+    warnings.warn("`best_partition` is deprecated and will be removed in a future version. Instead use `label_trace`.")
+    return label_trace(coords, r1, r2, label_singleton, min_staying_time, max_time_between, distance_function, return_intervals, min_size)
