@@ -98,6 +98,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#label-timestamped-trace">Label timestamped trace</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="#label-static-coordinates">Label static coordinates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#label-distance-matrix">Label distance matrix</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Reference</span></p>
 <ul>
@@ -196,7 +198,7 @@
        <span class="p">[</span> <span class="mf">63.403787</span>  <span class="p">,</span>  <span class="mf">10.4047871</span> <span class="p">,</span> <span class="mf">164.</span>        <span class="p">]])</span>
 </pre></div>
 </div>
-<p>Labels 0 and 164 in this case correspond to locations where the user was static, and possibly returned. The label -1 is given to location measurements which are recorded while the user is not stationary.</p>
+<p>Labels 0 and 164 in this example correspond to locations where the user was static, and possibly returned. The label -1 is given to location measurements which are recorded while the user is not stationary.</p>
 <p>It is relevant for the user to consider first setting the <code class="docutils literal notranslate"><span class="pre">r1</span></code> parameter in <a class="reference internal" href="../reference/reference.html#infostop.detect.label_trace" title="infostop.detect.label_trace"><code class="xref py py-mod docutils literal notranslate"><span class="pre">infostop.detect.label_trace</span></code></a>, which sets the threshold for the maximum distance between two consecutive location measurements allowed within the same stop location. As a rule of thumb, <code class="docutils literal notranslate"><span class="pre">r1</span></code> should be slightly greater than the standard deviation of the uncertainty distribution on the location measurement.</p>
 <p>To get bigger stop locations consider increasing <code class="docutils literal notranslate"><span class="pre">r2</span></code>, which sets the distance threshold for link creation.</p>
 <p>If the input data is not GPS points, the <code class="docutils literal notranslate"><span class="pre">distance_function</span></code> parameter should be set to a valid metric, and <code class="docutils literal notranslate"><span class="pre">r1</span></code> and <code class="docutils literal notranslate"><span class="pre">r2</span></code> should most likely be specified to something meaningful. Per default, Infostop assumes that points are (lat, lon) and uses the haversine distance function, where the thresholds are given in meters.</p>
@@ -212,8 +214,16 @@
        <span class="p">[</span> <span class="mi">63403787</span>  <span class="p">,</span>  <span class="mf">10.4047871</span>  <span class="p">,</span>  <span class="mi">1357086000</span> <span class="p">]])</span>
 </pre></div>
 </div>
-<p>This is useful, because it allows the user to specify <code class="docutils literal notranslate"><span class="pre">min_staying_time</span></code> which sets a lower bound on how short stops can be, and <code class="docutils literal notranslate"><span class="pre">max_time_between</span></code> which sets an upper bound on the longest allowed time between two samples before a new stop event is created.</p>
+<p>This is useful, as it allows the user to specify in the <a class="reference internal" href="../reference/reference.html#infostop.detect.label_trace" title="infostop.detect.label_trace"><code class="xref py py-mod docutils literal notranslate"><span class="pre">infostop.detect.label_trace</span></code></a> function two new parameters: <code class="docutils literal notranslate"><span class="pre">min_staying_time</span></code> which sets a lower bound on how short stops can be, and <code class="docutils literal notranslate"><span class="pre">max_time_between</span></code> which sets an upper bound on the longest allowed time between two samples before a new stop event is created.</p>
 </div>
+</div>
+<div class="section" id="label-static-coordinates">
+<h1>Label static coordinates<a class="headerlink" href="#label-static-coordinates" title="Permalink to this headline">¶</a></h1>
+<p>In cases where the user needs to cluster a collection of points (i.e. static coordinates) <a class="reference internal" href="../reference/reference.html#infostop.detect.label_static_points" title="infostop.detect.label_static_points"><code class="xref py py-mod docutils literal notranslate"><span class="pre">infostop.detect.label_static_points</span></code></a> is useful. It creates a network of locations where locations that are closer than <cite>r2</cite> to each other are linked, and then clusters this network using <a class="reference external" href="https://mapequation.org">Infomap</a>. Since Infomap is a flowbased clustering algorithm, it can detect overlapping clusters (i.e. stop locations or points of interest) as seperate locations.</p>
+</div>
+<div class="section" id="label-distance-matrix">
+<h1>Label distance matrix<a class="headerlink" href="#label-distance-matrix" title="Permalink to this headline">¶</a></h1>
+<p>Given an <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">N)</span></code> distance matrix for a set of coordinates <a class="reference internal" href="../reference/reference.html#infostop.detect.label_distance_matrix" title="infostop.detect.label_distance_matrix"><code class="xref py py-mod docutils literal notranslate"><span class="pre">infostop.detect.label_distance_matrix</span></code></a> returns the same result as <a class="reference internal" href="../reference/reference.html#infostop.detect.label_static_points" title="infostop.detect.label_static_points"><code class="xref py py-mod docutils literal notranslate"><span class="pre">infostop.detect.label_static_points</span></code></a> does for a <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">2)</span></code> array of coordinates.</p>
 </div>
 
 

@@ -36,7 +36,7 @@ And stacked with the input data:
            [ 63.4037841 ,  10.40480265, 164.        ],
            [ 63.403787  ,  10.4047871 , 164.        ]])
 
-Labels 0 and 164 in this case correspond to locations where the user was static, and possibly returned. The label -1 is given to location measurements which are recorded while the user is not stationary.
+Labels 0 and 164 in this example correspond to locations where the user was static, and possibly returned. The label -1 is given to location measurements which are recorded while the user is not stationary.
 
 It is relevant for the user to consider first setting the ``r1`` parameter in :mod:`infostop.detect.label_trace`, which sets the threshold for the maximum distance between two consecutive location measurements allowed within the same stop location. As a rule of thumb, ``r1`` should be slightly greater than the standard deviation of the uncertainty distribution on the location measurement.
 
@@ -59,5 +59,19 @@ In a third (rightmost) column, timestamps can be listed so the input series look
 	       [ 63.4037841 ,  10.40480265,  1357085700 ],
 	       [ 63403787  ,  10.4047871  ,  1357086000 ]])
 
-This is useful, because it allows the user to specify ``min_staying_time`` which sets a lower bound on how short stops can be, and ``max_time_between`` which sets an upper bound on the longest allowed time between two samples before a new stop event is created.
+This is useful, as it allows the user to specify in the :mod:`infostop.detect.label_trace` function two new parameters: ``min_staying_time`` which sets a lower bound on how short stops can be, and ``max_time_between`` which sets an upper bound on the longest allowed time between two samples before a new stop event is created.
 
+
+Label static coordinates
+------------------------
+
+In cases where the user needs to cluster a collection of points (i.e. static coordinates) :mod:`infostop.detect.label_static_points` is useful. It creates a network of locations where locations that are closer than `r2` to each other are linked, and then clusters this network using Infomap_. Since Infomap is a flowbased clustering algorithm, it can detect overlapping clusters (i.e. stop locations or points of interest) as seperate locations.
+
+
+Label distance matrix
+---------------------
+
+Given an ``(N, N)`` distance matrix for a set of coordinates :mod:`infostop.detect.label_distance_matrix` returns the same result as :mod:`infostop.detect.label_static_points` does for a ``(N, 2)`` array of coordinates.
+
+
+.. _Infomap: https://mapequation.org
