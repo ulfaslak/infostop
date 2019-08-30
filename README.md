@@ -41,6 +41,8 @@ Plotting this onto a map:
 
 ![img](https://ulfaslak.com/files/infostop_example_map.png)
 
+For more examples and full documentation check out the [documentation](https://infostop.readthedocs.io) page.
+
 ## Advantages
 * **Simplicity**: At its core, the method works by two steps. (1) Reducing the location trace to the medians of each stationary event and (2) embedding the resulting locations into a network that connects locations that are within a user-defined distance and clustering that network.
 * **Flow based**: Spatial clusters correspond to collections of location points that contain large amounts of flow when represented as a network. This enables the recovery of locations where traces slightly overlap.
