@@ -261,7 +261,7 @@ def compute_intervals(coords, coord_labels, max_time_between, distance_function=
     for lat, lon, time, loc in trajectory[1:]:
         
         #if the location name has not changed update the end of the interval
-        if (loc==loc_prec):
+        if (loc==loc_prec) and (time-t_end)<(max_time_between):
             t_end = time
             median_lat.append(lat)
             median_lon.append(lon)
@@ -269,7 +269,6 @@ def compute_intervals(coords, coord_labels, max_time_between, distance_function=
             
         #if the location name has changed build the interval and reset values
         else:
-            t_end = min([t_end+max_time_between,time])
             if loc_prec==-1:
                 final_trajectory.append([loc_prec, t_start,  t_end, np.nan, np.nan])
             else:
