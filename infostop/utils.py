@@ -1,5 +1,9 @@
 import infomap
 import numpy as np
+from math import radians
+from sklearn.neighbors import BallTree
+
+EARTH_RADIUS = 6371000
 
 
 def euclidean(points_a, points_b, radians = False):
@@ -77,6 +81,53 @@ def general_pdist(points, distance_function = haversine):
         result[vec_idx:vec_idx+temp.shape[0]] = temp
         vec_idx += temp.shape[0]
     return result
+
+
+def build_network(points, r2, metric = 'haversine', method = 'ball_tree', distance_function = haversine):
+    '''
+    Given a list of lat,lon coordinates return:
+    nodes (list of ints, correspond to the list of nodes)
+    edges (list of tuples, where an edge between two nodes exist if they are closer than r2)
+    singleton nodes (list of ints, nodes that have no connections, e.g. have been visited once)
+    '''
+    
+    if method == 'ball_tree':
+        #If the metric is haversine update points (to radians) and r2 accordingly.
+        if metric=='haversine':
+            points = np.vectorize(radians)(points)
+            r2 = r2/EARTH_RADIUS
+
+        #Build and query the tree
+        tree = BallTree(points, metric = metric)
+        results = tree.query_radius(points, r=r2, return_distance  = False)
+
+        #Build edges list
+        edges = []
+        for node,neighbors in enumerate(results):
+            for neighbor in neighbors:
+                if node<neighbor:
+                    edges.append((node, neighbor))
+        edges = np.array(edges)
+    
+    elif method == 'distance_matrix':
+      
+        # Compute matrix
+        D = distance_matrix(points, distance_function)
+        
+        # Construct network
+        edges = np.column_stack(np.where(D<r2))
+        
+       
+    #Find nodes
+    nodes = np.unique(edges.flatten())
+    # Label singleton nodes
+    c = len(points)
+    singleton_nodes = set(list(range(c))).difference(set(nodes))
+
+    return nodes, edges, singleton_nodes
+
+
+
 
 def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distance_function):
     """Group temporally adjacent points if they are closer than r_C.
