@@ -3,7 +3,7 @@ import warnings
 from infostop import utils
 
 
-def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function=utils.haversine, return_intervals=False, min_size=2):
+def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, distance_function=utils.haversine, return_intervals=False, min_size=2,  method = 'ball_tree', metric = 'haversine'):
     """Infer stop-location labels from mobility trace. Dynamic points are labeled -1.
 
     The method entils the following steps:
@@ -38,7 +38,11 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
             If True, aggregate the final trajectory into intervals (default: False)
         min_size : int
             Minimum size of group to consider it stationary (default: 2)
-            
+        method: str
+            Can take values "ball_tree" or "distance_matrix". Different ways of building the network fed to infomap.
+        metric: str
+            If the BallTree algorithm is used, this is the metric it should be fed with
+
 
     Returns
     -------
@@ -77,11 +81,11 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
     # Time-group points
     stop_events, event_map = get_stationary_events(coords, r1, min_size, min_staying_time, max_time_between, distance_function)
     
-    # Create distance matrix
-    D = utils.distance_matrix(stop_events, distance_function)
-
+    # Create network
+    nodes, edges, singleton_nodes = utils.build_network(stop_events, r2, metric, method, distance_function)
+        
     # Create network and run infomap
-    labels = label_distance_matrix(D, r2, label_singleton)
+    labels = label_stop_events(nodes, edges, singleton_nodes, label_singleton)
     
     # Label all the input points and return that label vector
     labels += [-1] # hack: make the last item -1, so when you index -1 you get -1 (HA!)
@@ -96,7 +100,7 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
     
     return coord_labels
 
-def label_static_points(coords, r2=10, label_singleton=True, distance_function=utils.haversine):
+def label_static_points(coords, r2=10, label_singleton=True, distance_function=utils.haversine, metric = 'haversine',method = 'ball_tree'):
     """Infer stop-location labels from static points.
 
     The method entils the following steps:
@@ -144,14 +148,14 @@ def label_static_points(coords, r2=10, label_singleton=True, distance_function=u
         except AssertionError:
             raise AssertionError("Column 1 (longitude) must have values between -180 and 180")
 
-    # Create distance matrix
-    D = utils.distance_matrix(coords, distance_function)
+    # Create network
+    nodes, edges, singleton_nodes = utils.build_network(coords, r2, metric, method, distance_function)
 
     # Create network and run infomap
-    return label_distance_matrix(D, r2, label_singleton)
+    return label_stop_events(nodes, edges, singleton_nodes, label_singleton)
     
 
-def label_distance_matrix(D, r2, label_singleton=True):
+def label_stop_events(nodes, edges, singleton_nodes,  label_singleton=True):
     """Infer infomap clusters from distance matrix and link distance threshold.
 
     This function is for clustering points in any space given their pairwise distances.
@@ -160,10 +164,12 @@ def label_distance_matrix(D, r2, label_singleton=True):
     
     Parameters
     ----------
-        D : array-like (shape=(N, N))
-            Distance matrix. Only upper triangle is considered.
-        r2 : number
-            Max distance between stationary points to form an edge.
+        nodes: array 
+            Nodes in the network
+        edges: array
+            Edges in the network (two nodes are connected if distance<r2)
+        singleton_nodes: array
+            Non connected nodes.
         label_singleton: bool
             If True, give stationary locations that was only visited once their own
             label. If False, label them as outliers (-1)
@@ -176,13 +182,7 @@ def label_distance_matrix(D, r2, label_singleton=True):
             `label_singleton=False`, coordinated with no neighbors within distance `r2` are
             labeled -1.
     """
-    # Construct network
-    edges = np.column_stack(np.where(D<r2))
-    nodes = np.unique(edges.flatten())
     
-    # Label singleton nodes
-    c = D.shape[0]
-    singleton_nodes = set(list(range(c))).difference(set(nodes))
 
     # Raise exception is network is too sparse.
     if len(edges) < 1:
@@ -198,11 +198,13 @@ def label_distance_matrix(D, r2, label_singleton=True):
             singleton_nodes,
             range(max_label+1, max_label+1+len(singleton_nodes))
         )))
-
+        
     # Cast the partition as a vector of labels like `[0, 1, 0, 3, 0, 0, 2, ...]`
+    total_nodes = len(nodes)+len(singleton_nodes)
+    
     return [
         partition[n] if n in partition else -1
-        for n in range(c)
+        for n in range(total_nodes)
     ]
 
 def get_stationary_events(coords, r1, min_size, min_staying_time, max_time_between, distance_function):
