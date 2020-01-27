@@ -3,9 +3,6 @@ import numpy as np
 from math import radians
 from sklearn.neighbors import BallTree
 
-EARTH_RADIUS = 6371000
-
-
 def euclidean(points_a, points_b, radians = False):
     """ 
     Calculate the euclidian distance bewteen points_a and points_b
@@ -18,7 +15,6 @@ def euclidean(points_a, points_b, radians = False):
         return distance[0]
     else:
         return distance
-
 
 def haversine(points_a, points_b, radians=False):
     """ 
@@ -50,86 +46,56 @@ def haversine(points_a, points_b, radians=False):
     lon = lon2 - lon1
     d = np.sin(lat * 0.5) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(lon * 0.5) ** 2
     h = 2 * 6371e3 * np.arcsin(np.sqrt(d))
+    
     return h  # in meters
-        
-    
 
-def general_pdist(points, distance_function = haversine):
-    """ 
-    Calculate the distance bewteen each pair in a set of points given a distance function.
+def build_network(coords, r2, distance_metric='haversine'):
+    """Build a network from a set of points and a threshold distance.
     
-    Author: Piotr Sapiezynski
-    Source: https://github.com/sapiezynski/haversinevec
-
     Parameters
     ----------
-        points : array-like (shape=(N, 2))
-            (lat, lon) in degree or radians (default is degree)
-
+        coords : array-like (N, 2)
+        r2 : float
+            Threshold distance
+        distance_metric : str
+            Either 'haversine' or None
+    
     Returns
     -------
-        result : array-like (shape=(N*(N-1)//2, ))
-    """ 
-    c = points.shape[0]
-    result = np.zeros((c*(c-1)//2,), dtype=np.float64)
-    vec_idx = 0
-        
-    for idx in range(0, c-1):
-        ref = points[idx]
-        temp = distance_function(points[idx+1:c,:], ref, radians = False)
-        #to be taken care of
-        result[vec_idx:vec_idx+temp.shape[0]] = temp
-        vec_idx += temp.shape[0]
-    return result
-
-
-def build_network(points, r2, metric = 'haversine', method = 'ball_tree', distance_function = haversine):
-    '''
-    Given a list of lat,lon coordinates return:
-    nodes (list of ints, correspond to the list of nodes)
-    edges (list of tuples, where an edge between two nodes exist if they are closer than r2)
-    singleton nodes (list of ints, nodes that have no connections, e.g. have been visited once)
-    '''
+        nodes : list of ints
+            Correspond to the list of nodes
+        edges : list of tuples
+            An edge between two nodes exist if they are closer than r2
+        singleton nodes : list of ints
+            Nodes that have no connections, e.g. have been visited once
+    """
     
-    if method == 'ball_tree':
-        #If the metric is haversine update points (to radians) and r2 accordingly.
-        if metric=='haversine':
-            points = np.vectorize(radians)(points)
-            r2 = r2/EARTH_RADIUS
+    # If the metric is haversine update points (to radians) and r2 accordingly.
+    if distance_metric=='haversine':
+        points = np.vectorize(radians)(coords)
+        r2 = r2 / 6371000
 
-        #Build and query the tree
-        tree = BallTree(points, metric = metric)
-        results = tree.query_radius(points, r=r2, return_distance  = False)
+    # Build and query the tree
+    tree = BallTree(coords, metric=distance_metric)
+    results = tree.query_radius(coords, r=r2, return_distance=False)
 
-        #Build edges list
-        edges = []
-        for node,neighbors in enumerate(results):
-            for neighbor in neighbors:
-                if node<neighbor:
-                    edges.append((node, neighbor))
-        edges = np.array(edges)
-    
-    elif method == 'distance_matrix':
-      
-        # Compute matrix
-        D = distance_matrix(points, distance_function)
-        
-        # Construct network
-        edges = np.column_stack(np.where(D<r2))
-        
+    # Build edges list
+    edges = []
+    for node, neighbors in enumerate(results):
+        for neighbor in neighbors:
+            if node < neighbor:
+                edges.append((node, neighbor))
+    edges = np.array(edges)
        
-    #Find nodes
+    # Find nodes
     nodes = np.unique(edges.flatten())
+    
     # Label singleton nodes
-    c = len(points)
-    singleton_nodes = set(list(range(c))).difference(set(nodes))
+    singleton_nodes = set(range(len(coords))) - set(nodes)
 
     return nodes, edges, singleton_nodes
 
-
-
-
-def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distance_function):
+def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distance_metric):
     """Group temporally adjacent points if they are closer than r_C.
     
     Parameters
@@ -138,7 +104,7 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distanc
         r_C : number (critical radius)
         min_staying_time : int
         max_staying_time : int
-        distance_function : function (used to compute distances)
+        distance_metric : str
     
     Returns
     -------
@@ -152,7 +118,7 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distanc
         for coord in coords[1:]:
             
             # Compute distance to current group
-            dist = distance_function(np.median(current_group, axis=0), coord)
+            dist = eval(distance_metric)(np.median(current_group, axis=0), coord)
         
             # Put in current group
             if dist <= r_C:
@@ -168,7 +134,7 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distanc
         for coord in coords[1:]:
             
             # Compute distance to current group
-            dist = distance_function(np.median(current_group[:, :2], axis=0), coord[:2])
+            dist = eval(distance_metric)(np.median(current_group[:, :2], axis=0), coord[:2])
             time = current_group[-1, 2] - coord[2]
         
             # Put in current group
@@ -189,7 +155,7 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distanc
     groups.append(current_group)
     return groups
 
-def get_stationary_events(groups, min_size=2):
+def reduce_groups(groups, min_size=2):
     """Convert groups of multiple points (stationary location events) to median-of-group points.
     
     Parameters
@@ -266,26 +232,8 @@ def infomap_communities(nodes, edges):
         for k, v in infomapSimple.getModules().items()
     ])
 
-def distance_matrix(stop_events, distance_function=haversine):
-    """Compute distance matrix between list of points.
 
-    Parameters
-    ----------
-        stop_events : array-like (shape=(N, 2))
-        distance_function : function (used to compute distances)
-
-    Returns
-    -------
-        D : array-like (shape=(N, N))
-    """
-    c = stop_events.shape[0]
-    D = np.zeros((c, c)) * np.nan
-    D[np.triu_indices(c, 1)] = general_pdist(stop_events, distance_function)
-    return D
-
-def compute_intervals(coords, coord_labels, max_time_between, distance_function=haversine):
-    
-    
+def compute_intervals(coords, coord_labels, max_time_between=86400, distance_metric="haversine"):
     """Compute stop and moves intervals from the list of labels.
     
     Parameters
@@ -298,6 +246,11 @@ def compute_intervals(coords, coord_labels, max_time_between, distance_function=
         intervals : array-like (shape=(N_intervals,4), location, start_time, end_time, latitude, longitude)
     
     """
+    
+    if coords.shape[1] == 2:
+        times = np.array(list(range(0, len(coords))))
+        coords = np.hstack([coords, times.reshape(-1,1)])
+        
     trajectory = np.hstack([coords, coord_labels.reshape(-1,1)])
     
     final_trajectory = []
