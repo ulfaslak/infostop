@@ -7,3 +7,4 @@
 /dist/
 /tests/
 /paper/figures.ai
+*.ipynb_checkpoints
