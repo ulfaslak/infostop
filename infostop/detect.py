@@ -1,9 +1,11 @@
 import numpy as np
 import warnings
 from infostop import utils
+import cpputils
+from tqdm import tqdm
 
 
-def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, min_size=2,  distance_metric='haversine'):
+def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=300, max_time_between=86400, min_size=2, tolerance=0, distance_metric='haversine'):
     """Infer stop-location labels from mobility trace. Dynamic points are labeled -1.
 
     The method entils the following steps:
@@ -17,7 +19,7 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
     
     Parameters
     ----------
-        coords : array-like (shape (N, 2)/(N,3)) or list of arrays
+        coords : array-like (shape (N, 2)/(N, 3)) or list of arrays
             Columns 0 and 1 are reserved for lat and lon. Column 2 is reserved for time (any unit consistent with
             `min_staying_time` and `max_time_between`). If the input type is a list of arrays, each array is assumed
             to be the trace of a single user, in which case the obtained stop locations are shared by all users in
@@ -37,6 +39,10 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
             is provided
         min_size : int
             Minimum size of group to consider it stationary (default: 2)
+        tolerance : float ()
+            The minimal difference allowed between points before they are considered the same points.
+            Highly useful for downsampling data and dramatically reducing runtime. Higher values yields
+            higher downsampling. For GPS data, it is not recommended to increase it beyond 1e-6.
         distance_metric: str
             Either 'haversine' (for GPS data) or 'euclidean'
 
@@ -50,7 +56,7 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
             typically locations with more observations have lower indices.
     """
 
-    # Format input data
+    # Format input
     multiuser = True
     if type(coords) != list:
         coords = [coords]
@@ -90,24 +96,38 @@ def label_trace(coords, r1=10, r2=10, label_singleton=False, min_staying_time=30
 
     # Time-group points
     stop_events, event_maps = [], []
-    for coords_u in coords:
-        stop_events_u, event_map_u = get_stationary_events(
+    for coords_u in tqdm(coords):  ## DEBUG
+        stop_events_u, event_map_u = cpputils.get_stationary_events(
             coords_u, r1, min_size, min_staying_time, max_time_between, distance_metric
         )
         stop_events.append(stop_events_u)
         event_maps.append(event_map_u)
     
+    # Downsample
+    coords = np.vstack(stop_events)
+    if tolerance > 0:
+        coords = np.around(coords / tolerance) * tolerance
+
+    # Only keep unique coordinates for clustering
+    coords, inverse_indices = np.unique(
+        coords,
+        return_inverse=True, axis=0
+    )
+
     # Create network
-    nodes, edges, singleton_nodes = utils.build_network(np.vstack(stop_events), r2, distance_metric)
+    node_idx_neighbors = utils.build_network(coords, r2, distance_metric)
         
     # Create network and run infomap
-    labels = label_network(nodes, edges, singleton_nodes, label_singleton)
+    labels = label_network(node_idx_neighbors, label_singleton)
+
+    # Add back the labels that were taken out when getting unique coords
+    labels = labels[inverse_indices]
     
     # Label all the input points and return that label vector
     labels += [-1] # hack: make the last item -1, so when you index -1 you get -1 (HA!)
     coord_labels = []
     for j, event_map_u in enumerate(event_maps):
-        i_min = sum([stop_events[j_].shape[0] for j_ in range(j)])
+        i_min = sum([len(stop_events[j_]) for j_ in range(j)])
         coord_labels.append(
             np.array([labels[i + i_min] for i in event_map_u])
         )
@@ -146,12 +166,12 @@ def label_static_points(coords, r2=10, label_singleton=True, distance_metric='ha
 
     # ASSERTIONS
     # ----------
-    try:
-        assert coords.shape[1] == 2
-    except AssertionError:
-        raise AssertionError("Number of columns must be 2")        
             
     if distance_metric == "haversine":
+        try:
+            assert coords.shape[1] == 2
+        except AssertionError:
+            raise AssertionError("Number of columns must be 2")
         try:
             assert np.min(coords[:, 0]) > -90
             assert np.max(coords[:, 0]) < 90
@@ -164,13 +184,13 @@ def label_static_points(coords, r2=10, label_singleton=True, distance_metric='ha
             raise AssertionError("Column 1 (longitude) must have values between -180 and 180")
 
     # Create network
-    nodes, edges, singleton_nodes = utils.build_network(coords, r2, distance_metric)
+    node_idx_neighbors = utils.build_network(coords, r2, distance_metric)
 
     # Create network and run infomap
-    return label_network(nodes, edges, singleton_nodes, label_singleton)
-    
+    return label_network(node_idx_neighbors, label_singleton)
 
-def label_network(nodes, edges, singleton_nodes, label_singleton=True):
+@utils.timeit
+def label_network(node_idx_neighbors, label_singleton=True):
     """Infer infomap clusters from distance matrix and link distance threshold.
     
     Parameters
@@ -193,14 +213,9 @@ def label_network(nodes, edges, singleton_nodes, label_singleton=True):
             `label_singleton=False`, coordinates with no neighbors within distance `r2` are
             labeled -1.
     """
-    
-
-    # Raise exception is network is too sparse.
-    if len(edges) < 1:
-        raise Exception("No edges added because `r2` < the smallest distance between any two points.")
         
     # Infer the partition with infomap. Partiton looks like `{node: community, ...}`
-    partition = utils.infomap_communities(list(nodes), edges)
+    partition, singleton_nodes = utils.infomap_communities(node_idx_neighbors)
     
     # Add new labels to each singleton point (stop that was further than r2 from
     # any other point and thus was not represented in the network)
@@ -210,29 +225,32 @@ def label_network(nodes, edges, singleton_nodes, label_singleton=True):
             singleton_nodes,
             range(max_label+1, max_label+1+len(singleton_nodes))
         )))
-        
+    
     # Cast the partition as a vector of labels like `[0, 1, 0, 3, 0, 0, 2, ...]`
-    return [
+    return np.array([
         partition[n] if n in partition else -1
-        for n in range(len(nodes) + len(singleton_nodes))
-    ]
+        for n in range(len(node_idx_neighbors))
+    ])
 
 def get_stationary_events(coords, r1, min_size, min_staying_time, max_time_between, distance_metric):
     """Reduce location trace to the sequence of stationary events.
+
+    (NOT IN USE: REPLACED BY `cpputils.get_stationary_events`)
 
     Parameters
     ----------
         coords : array-like (shape=(N, 2))
         r1 : number (critical radius)
+        min_size : int
         min_staying_time : int
         max_time_between : int
+        distance_metric : str
 
     Returns
     -------
         stop_events : np.array (<N, 2)
-        event_map : list
+        event_map : list (N, )
             Maps index to input-data indices.
-
     """
     groups = utils.group_time_distance(coords, r1, min_staying_time, max_time_between, distance_metric)
     stop_events, event_map = utils.reduce_groups(groups, min_size)

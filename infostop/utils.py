@@ -2,53 +2,47 @@ import infomap
 import numpy as np
 from math import radians
 from sklearn.neighbors import BallTree
+import time
 
-def euclidean(points_a, points_b, radians = False):
+## DEBUG
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        if 'log_time' in kw:
+            name = kw.get('log_name', method.__name__.upper())
+            kw['log_time'][name] = int((te - ts) * 1000)
+        else:
+            print('%r  %2.2f ms' % (method.__name__, (te - ts) * 1000))
+        return result
+    return timed
+
+
+
+def euclidean(points_a, points_b):
     """ 
-    Calculate the euclidian distance bewteen points_a and points_b
-    points_a and points_b can be a single points or lists of points.
+    Calculate the euclidian distance bewteen points_a and points_b.
     """
-    
-    distance = np.linalg.norm((points_a - points_b).reshape(-1,2),axis = 1)
-    
-    if points_a.ndim ==1:
-        return distance[0]
-    else:
-        return distance
+    return np.linalg.norm((points_a - points_b), axis=0)
 
-def haversine(points_a, points_b, radians=False):
+def haversine(points_a, points_b):
     """ 
     Calculate the great-circle distance bewteen points_a and points_b
     points_a and points_b can be a single points or lists of points.
-
-    Author: Piotr Sapiezynski
-    Source: https://github.com/sapiezynski/haversinevec
-
-    Using this because it is vectorized (stupid fast).
     """
     def _split_columns(array):
-        if array.ndim == 1:
-            return array[0], array[1] # just a single row
-        else:
-            return array[:,0], array[:,1]
-
-    if radians:
-        lat1, lon1 = _split_columns(points_a)
-        lat2, lon2 = _split_columns(points_b)
-
-    else:
-    # convert all latitudes/longitudes from decimal degrees to radians
-        lat1, lon1 = _split_columns(np.radians(points_a))
-        lat2, lon2 = _split_columns(np.radians(points_b))
-
-    # calculate haversine
+        return array[0], array[1]
+    lat1, lon1 = _split_columns(np.radians(points_a))
+    lat2, lon2 = _split_columns(np.radians(points_b))
     lat = lat2 - lat1
     lon = lon2 - lon1
     d = np.sin(lat * 0.5) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(lon * 0.5) ** 2
     h = 2 * 6371e3 * np.arcsin(np.sqrt(d))
-    
     return h  # in meters
 
+@timeit
 def build_network(coords, r2, distance_metric='haversine'):
     """Build a network from a set of points and a threshold distance.
     
@@ -71,33 +65,20 @@ def build_network(coords, r2, distance_metric='haversine'):
     """
     
     # If the metric is haversine update points (to radians) and r2 accordingly.
-    if distance_metric=='haversine':
-        points = np.vectorize(radians)(coords)
+    if distance_metric == 'haversine':
+        coords = np.radians(coords)
         r2 = r2 / 6371000
 
     # Build and query the tree
     tree = BallTree(coords, metric=distance_metric)
-    results = tree.query_radius(coords, r=r2, return_distance=False)
 
-    # Build edges list
-    edges = []
-    for node, neighbors in enumerate(results):
-        for neighbor in neighbors:
-            if node < neighbor:
-                edges.append((node, neighbor))
-    edges = np.array(edges)
-       
-    # Find nodes
-    nodes = np.unique(edges.flatten())
-    
-    # Label singleton nodes
-    singleton_nodes = set(range(len(coords))) - set(nodes)
+    return tree.query_radius(coords, r=r2, return_distance=False)
 
-    return nodes, edges, singleton_nodes
-
-def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distance_metric):
+def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distance_func):
     """Group temporally adjacent points if they are closer than r_C.
     
+    (NOT IN USE: REPLACED BY `cpputils.get_stationary_events`)
+
     Parameters
     ----------
         coords : array-like (shape=(N, 2) or shape=(N,3))
@@ -113,12 +94,13 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distanc
     """
     groups = []
     
+    # No time information
     if coords.shape[1] == 2:
         current_group = coords[0].reshape(1, 2)
         for coord in coords[1:]:
             
             # Compute distance to current group
-            dist = eval(distance_metric)(np.median(current_group, axis=0), coord)
+            dist = distance_func(np.median(current_group, axis=0), coord)
         
             # Put in current group
             if dist <= r_C:
@@ -128,13 +110,17 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distanc
             else:
                 groups.append(current_group)
                 current_group = coord.reshape(1, 2)
+        
+        # Append the last group
+        groups.append(current_group)
 
+    # With time information
     else:
         current_group = coords[0].reshape(1, 3)
         for coord in coords[1:]:
             
             # Compute distance to current group
-            dist = eval(distance_metric)(np.median(current_group[:, :2], axis=0), coord[:2])
+            dist = distance_func(np.median(current_group[:, :2], axis=0), coord[:2])
             time = current_group[-1, 2] - coord[2]
         
             # Put in current group
@@ -143,20 +129,26 @@ def group_time_distance(coords, r_C, min_staying_time, max_staying_time, distanc
             
             # Or start new group if dist is too large or time criteria are not met
             else:
-                if current_group.shape[0] == 1:
-                    groups.append(current_group)
-                elif current_group[-1, 2] - current_group[0, 2] > min_staying_time:
-                    groups.append(current_group)
-                else:
+                if current_group.shape[0] > 1 and current_group[-1, 2] - current_group[0, 2] < min_staying_time:
                     groups.extend(current_group.reshape(-1, 1, 3))
+                else:
+                    groups.append(current_group)
+                    
                 current_group = coord.reshape(1, 3)
-
-    # Add the last group
-    groups.append(current_group)
+                
+        # Append the last group
+        if current_group.shape[0] > 1 and current_group[-1, 2] - current_group[0, 2] < min_staying_time:
+            groups.extend(current_group.reshape(-1, 1, 3))
+        else:
+            groups.append(current_group)
+            
     return groups
 
+@timeit
 def reduce_groups(groups, min_size=2):
     """Convert groups of multiple points (stationary location events) to median-of-group points.
+    
+    (NOT IN USE: REPLACED BY `cpputils.get_stationary_events`)
     
     Parameters
     ----------
@@ -186,51 +178,65 @@ def reduce_groups(groups, min_size=2):
     return stat_coords, np.array(event_map)
 
 
-def infomap_communities(nodes, edges):
+def infomap_communities(node_idx_neighbors):
     """Two-level partition of single-layer network with Infomap.
     
     Parameters
     ----------
-        edges : list of tuples
-            Example: `("cat", "dog", 1)` or (0, 1)
+        node_index_neighbors : array of arrays
+            Example: `array([array([0]), array([1]), array([2]), ..., array([9997]),
+       array([9998]), array([9999])], dtype=object)
 
     Returns
     -------
         out : dict (node-community hash map)
     """
-    # Represent node names as indices
+    # Infomap wants ranked indices
     name_map = {}
     name_map_inverted = {}
-    for id_, n in enumerate(nodes):  # Loop over nodes
-        name_map_inverted[id_] = n
-        name_map[n] = id_
-        
+    singleton_nodes = []
+    infomap_idx = 0
+    for n, neighbors in enumerate(node_idx_neighbors):  # Loop over nodes
+        if len(neighbors) > 1:
+            name_map_inverted[infomap_idx] = n
+            name_map[n] = infomap_idx
+            infomap_idx += 1
+        else:
+            singleton_nodes.append(n)
+
+    # Raise exception is network is too sparse.
+    if len(name_map) == 0:
+        raise Exception("No edges added because `r2` < the smallest distance between any two points.")
+
     # Initiate two-level Infomap
     infomapSimple = infomap.Infomap("--two-level")
     network = infomapSimple.network()
     
     # Add nodes
-    for n in nodes:
-        network.addNode(name_map[n]).disown()
+    n_edges = 0
+    for n, neighbors in enumerate(node_idx_neighbors):
+        if len(neighbors) > 1:
+            network.addNode(name_map[n]).disown()
+            n_edges += 1
 
-    # Add links (weighted)
-    if len(edges[0]) == 2:
-        for n1, n2 in edges:
-            network.addLink(name_map[n1], name_map[n2], 1)
+    print(n_edges)
 
-    # Add links (unweighted)
-    if len(edges[0]) == 3:
-        for n1, n2, w in edges:
-            network.addLink(name_map[n1], name_map[n2], w)
+    # Add links
+    for node, neighbors in enumerate(node_idx_neighbors):
+        for neighbor in neighbors:
+            if neighbor > node:
+                network.addLink(name_map[node], name_map[neighbor], 1)
     
     # Run infomap
     infomapSimple.run()
     
-    # Return in node-community dictionary format
-    return dict([
-        (name_map_inverted[k], v)
-        for k, v in infomapSimple.getModules().items()
+    # Convert to node-community dict format
+    partition = dict([
+        (name_map_inverted[infomap_idx], module)
+        for infomap_idx, module in infomapSimple.getModules().items()
     ])
+
+    return partition, singleton_nodes
 
 
 def compute_intervals(coords, coord_labels, max_time_between=86400, distance_metric="haversine"):

@@ -7,14 +7,6 @@ This package implements stop location detection using Infomap.
 from .detect import label_trace
 from .detect import label_static_points
 from .detect import label_network
+import cpputils
 
-name = "infostop"
-
-__version__ = "0.0.13"
-__author__ = "Ulf Aslak, Laura Alessandretti"
-__copyright__ = "Copyright 2019, Ulf Aslak"
-__credits__ = ["Ulf Aslak", "Laura Alessandretti"]
-__license__ = "MIT"
-__maintainer__ = "Ulf Aslak"
-__email__ = "ulfjensen@gmail.com"
-__status__ = "Development"
+from .metadata import __version__, __name__

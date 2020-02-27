@@ -3,7 +3,8 @@
 Contains a bunch of information about this package.
 """
 
-__version__ = "0.0.13"
+__version__ = "0.0.14"
+__name__ = "infostop"
 __author__ = "Ulf Aslak, Laura Alessandretti"
 __copyright__ = "Copyright 2019, Ulf Aslak"
 __credits__ = ["Ulf Aslak", "Laura Alessandretti"]
