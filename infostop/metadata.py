@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Contains a bunch of information about this package.
+Package matadata
 """
 
-__version__ = "0.0.14"
+__version__ = "0.1.0"
 __name__ = "infostop"
 __author__ = "Ulf Aslak, Laura Alessandretti"
-__copyright__ = "Copyright 2019, Ulf Aslak"
+__copyright__ = "Copyright 2020, Ulf Aslak"
 __credits__ = ["Ulf Aslak", "Laura Alessandretti"]
 __license__ = "MIT"
 __maintainer__ = "Ulf Aslak"
