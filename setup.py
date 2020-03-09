@@ -106,7 +106,7 @@ setup(
     setup_requires=['pybind11>=2.4'],
     install_requires=[
         'pybind11>=2.4',
-        'infomap',
+        'infomap>=1.0.6',
         'numpy'
     ],
     cmdclass={'build_ext': BuildExt},
