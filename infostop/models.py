@@ -1,8 +1,9 @@
+from __future__ import print_function
+
 import numpy as np
 import cpputils
 from infostop import utils
 from tqdm import tqdm
- 
 
 class Infostop:
     """Infer stop-location labels from mobility trace. Dynamic points are labeled -1.
@@ -171,7 +172,7 @@ class Infostop:
 
         if self.verbose:
             num_stat_orig = len(self.stat_coords)
-            print(f"Downsampling {num_stat_orig} total stop events to...", end=" ")
+            print("Downsampling" + str(num_stat_orig) + "total stop events to...")
 
         # Only keep unique coordinates for clustering
         self.stat_coords, inverse_indices, self.counts = np.unique(
@@ -180,7 +181,7 @@ class Infostop:
         )
 
         if self.verbose:
-            print(f"{len(self.stat_coords)}", end=" ")
+#             print(f"{len(self.stat_coords)}", end=" ")
             print("(%.1f%% duplicates)" % ((1 - len(self.stat_coords)/num_stat_orig)*100))
 
         # (3) Find neighbors within `r2` for each point
@@ -244,11 +245,11 @@ class Infostop:
                "`distance_metric` should be either 'euclidean' or 'haversine'"
 
 
-    def _data_assertions(self, data):
+    def _data_assertions(self, data): 
         assert not np.any(np.isnan(np.vstack(data))), \
-               f"There are {np.isnan(np.vstack(data))} NaN values in the input data."
+               "There are NaN values in the input data."
         for u, coords_u in enumerate(data):
-            error_insert = "" if not self.multiuser else f"User {u}: "
+            error_insert = "" if not self.multiuser else "User " + str(u) + ": "
             assert coords_u.shape[1] in [2, 3], \
                    "%sNumber of columns must be 2 or 3" % error_insert
             if coords_u.shape[1] == 3:
@@ -371,7 +372,7 @@ class SpatialInfomap:
 
         if self.verbose:
             num_stat_orig = len(self.stat_coords)
-            print(f"Downsampling {num_stat_orig} total stop events to...", end=" ")
+#             print(f"Downsampling" + str(num_stat_orig) + "total stop events to")
 
         # Only keep unique coordinates for clustering
         self.stat_coords, inverse_indices, self.counts = np.unique(
@@ -380,7 +381,7 @@ class SpatialInfomap:
         )
 
         if self.verbose:
-            print(f"{len(self.stat_coords)}", end=" ")
+#             print(f"{len(self.stat_coords)}", end=" ")
             print("(%.1f%% duplicates)" % ((1 - len(self.stat_coords)/num_stat_orig)*100))
 
         # (2) Find neighbors within `r2` for each point
@@ -425,7 +426,8 @@ class SpatialInfomap:
 
     def _data_assertions(self, data):
         assert not np.any(np.isnan(data)), \
-               f"There are {np.isnan(np.vstack(data))} NaN values in the input data."
+               "change"
+#                "There are" + str(np.isnan(np.vstack(data)) + "NaN values in the input data."
         assert data.shape[1] == 2, \
                "Number of columns must be 2"
         if self.distance_metric == 'haversine':

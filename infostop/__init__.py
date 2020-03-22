@@ -11,6 +11,7 @@ from .models import Infostop
 from .models import SpatialInfomap
 from .visualize import plot_map
 from .postprocess import compute_intervals
+from .postprocess import compute_intervals_with_tz
 import cpputils
 
 from .metadata import __version__, __name__

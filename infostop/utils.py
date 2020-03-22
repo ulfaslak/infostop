@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy as np
 from sklearn.neighbors import BallTree
 from scipy.spatial.qhull import QhullError
@@ -75,8 +77,8 @@ def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_e
         else:
             singleton_nodes.append(n)
 
-    if verbose:
-        print(f"    --> added {len(name_map)} nodes (found {len(singleton_nodes)} singleton nodes)")
+#     if verbose:
+#         print(f"    --> added {len(name_map)} nodes (found {len(singleton_nodes)} singleton nodes)")
 
     # Raise exception if network is too sparse.
     if len(name_map) == 0:
@@ -100,13 +102,13 @@ def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_e
                 network.addLink(name_map[node], name_map[neighbor], max(counts[node], counts[neighbor]) * distance**(-weight_exponent))
                 if verbose: n_edges += 1
     
-    if verbose:
-        print(f"    --> added {n_edges} edges")
+#     if verbose:
+#         print(f"    --> added {n_edges} edges")
 
     # Run infomap
-    if verbose: print("    ... running Infomap...", end=" ")
+#     if verbose: print("    ... running Infomap...", end=" ")
     network.run()
-    if verbose: print("done")
+#     if verbose: print("done")
     
     # Convert to node-community dict format
     partition = dict([
@@ -114,8 +116,8 @@ def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_e
         for infomap_idx, module in network.modules
     ])
 
-    if verbose:
-        print(f"Found {len(set(partition.values()))-1} stop locations")
+#     if verbose:
+#         print(f"Found {len(set(partition.values()))-1} stop locations")
 
     return partition, singleton_nodes
 
