@@ -131,11 +131,11 @@ class Infostop:
         if type(data) != list:
             self.data = [data]
             self.multiuser = False
-            progress = pass_func  # no need to log progress in (1) if there's just one user
+            progress = utils.pass_func  # no need to log progress in (1) if there's just one user
         else:
             self.data = data
             if len(data) == 1:
-                progress = pass_func
+                progress = utils.pass_func
 
         if self.verbose:
             print('Multiuser input:', self.multiuser)
