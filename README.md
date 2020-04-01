@@ -1,7 +1,7 @@
 # Infostop
 *Python package for detecting stop locations in mobility data*
 
-This package implements the algorithm described in (paper not written yet), for detecting stop locations in time-ordered location data.
+This package implements the algorithm described in https://arxiv.org/pdf/2003.14370.pdf, for detecting stop locations in time-ordered location data.
 
 ## Usage
 Given a location trace such as:
