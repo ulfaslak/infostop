@@ -202,7 +202,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 				coords(i, 0), coords(i, 1),
 				median(stop_points_lat), median(stop_points_lon)
 			);
-			dtime = coords(i-1, 2) - coords(i, 2);
+			dtime = coords(i, 2) - coords(i-1, 2);
 
 			if (ddist <= r_C && dtime <= max_staying_time)
 			{
