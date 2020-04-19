@@ -164,8 +164,13 @@ class Infostop:
         if self.verbose:
             print("    --> %sreduction was %.1f%%" % ("average " if self.multiuser else "", np.mean(avg_reduction)))
         
+        # Merge `stop_events` from different users into `stat_coords`
+        try:
+            self.stat_coords = np.vstack([se for se in stop_events if len(se) > 0])
+        except ValueError:
+            raise Exception("No stop events found. Check that `r1`, `min_staying_time` and `min_size` parameters are chosen correctly.")
+
         # (2) Downsample (dramatically reduces computation time)
-        self.stat_coords = np.vstack(stop_events)
         if self.min_spacial_resolution > 0:
             self.stat_coords = np.around(self.stat_coords / self.min_spacial_resolution) * self.min_spacial_resolution
 
