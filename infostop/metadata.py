@@ -3,7 +3,7 @@
 Package matadata
 """
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 __name__ = "infostop"
 __author__ = "Ulf Aslak, Laura Alessandretti"
 __copyright__ = "Copyright 2020, Ulf Aslak"
