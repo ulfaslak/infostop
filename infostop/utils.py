@@ -78,10 +78,7 @@ def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_e
     if verbose:
         print(f"    --> added {len(name_map)} nodes (found {len(singleton_nodes)} singleton nodes)")
 
-    # Raise exception if network is too sparse.
-    if len(name_map) == 0:
-        raise Exception("No edges added because `r2` < the smallest distance between any two points.")
-
+    
     # Add links
     if verbose:
         n_edges = 0
@@ -105,14 +102,17 @@ def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_e
 
     # Run infomap
     if verbose: print("    ... running Infomap...", end=" ")
-    network.run()
-    if verbose: print("done")
-    
-    # Convert to node-community dict format
-    partition = dict([
-        (name_map_inverse[infomap_idx], module)
-        for infomap_idx, module in network.modules
-    ])
+    if len(name_map) > 0:
+        network.run()
+    	# Convert to node-community dict format
+        partition = dict([
+            (name_map_inverse[infomap_idx], module)
+            for infomap_idx, module in network.modules
+        ])
+        if verbose: print("done")
+    else:
+        partition = {}
+
 
     if verbose:
         print(f"Found {len(set(partition.values()))-1} stop locations")
@@ -149,7 +149,7 @@ def label_network(node_idx_neighbors, node_idx_distances, counts, weight_exponen
     # Add new labels to each singleton point (stop that was further than r2 from
     # any other point and thus was not represented in the network)
     if label_singleton:
-        max_label = max(partition.values())
+        max_label = max(partition.values(), default=-1)
         partition.update(dict(zip(
             singleton_nodes,
             range(max_label+1, max_label+1+len(singleton_nodes))
