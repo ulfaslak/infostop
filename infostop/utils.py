@@ -59,7 +59,7 @@ def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_e
     else:       progress = pass_func
 
     # Initiate  two-level Infomap
-    network = Infomap("--two-level")
+    network = Infomap("--two-level" + (" --silent" if not verbose else ""))
 
     # Add nodes (and reindex nodes because Infomap wants ranked indices)
     if verbose: print("    ... adding nodes:")
