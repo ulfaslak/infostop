@@ -79,23 +79,30 @@ class Infostop:
         verbose=False
     ):
         # Set input parameters as attributes
-        self.r1 = r1
-        self.r2 = r2
-        self.label_singleton = label_singleton
-        self.min_staying_time = min_staying_time
-        self.max_time_between = max_time_between
-        self.min_size = min_size
-        self.min_spacial_resolution = min_spacial_resolution
-        self.distance_metric = distance_metric
-        self.weighted = weighted
-        self.weight_exponent = weight_exponent
-        self.verbose = verbose
-        self.data = None
-        self.stat_coords = None
-        self.stat_labels = None
-        self.counts = None
-        self.labels = None
-        self.is_fitted = False
+        self._r1 = r1
+        self._r2 = r2
+        self._label_singleton = label_singleton
+        self._min_staying_time = min_staying_time
+        self._max_time_between = max_time_between
+        self._min_size = min_size
+        self._min_spacial_resolution = min_spacial_resolution
+        self._distance_metric = distance_metric
+        self._weighted = weighted
+        self._weight_exponent = weight_exponent
+        self._verbose = verbose
+        
+        # Initialize internal variables
+        self._data = None
+        self._stat_coords = None
+        self._stat_labels = None
+        self._counts = None
+        self._labels = None
+        self._is_fitted = False
+
+        # Initialize computable attributes
+        self.label_medians = None
+        # self.label_areas = None
+        # self.label_count = None
 
         # Run hyper parameter assertions
         self._hyperparam_assertions()
@@ -123,129 +130,212 @@ class Infostop:
             >>> assert type(traces) == type(labels)
         """
         
-        if self.verbose: progress = tqdm
+        if self._verbose: progress = tqdm
         else:            progress = utils.pass_func
 
         # Infer multiuser mode
         self.multiuser = True
         if type(data) != list:
-            self.data = [data]
+            self._data = [data]
             self.multiuser = False
             progress = utils.pass_func  # no need to log progress in (1) if there's just one user
         else:
-            self.data = data
+            self._data = data
             if len(data) == 1:
                 progress = utils.pass_func
 
-        if self.verbose:
+        if self._verbose:
             print('Multiuser input:', self.multiuser)
 
         # Assert the input data
-        self._data_assertions(self.data)
+        self._data_assertions(self._data)
 
         # (1) Sequential downsampling: group time-adjacent points
-        if self.verbose:
+        if self._verbose:
             avg_reduction = []
             print("Downsampling in time: keeping medians of stationary events")
 
         stop_events, event_maps = [], []
-        for u, coords_u in progress(enumerate(self.data), total=len(self.data)):
+        for u, coords_u in progress(enumerate(self._data), total=len(self._data)):
             stop_events_u, event_map_u = cpputils.get_stationary_events(
-                coords_u, self.r1, self.min_size, self.min_staying_time,
-                self.max_time_between, self.distance_metric
+                coords_u, self._r1, self._min_size, self._min_staying_time,
+                self._max_time_between, self._distance_metric
             )
 
-            if self.verbose:
+            if self._verbose:
                 avg_reduction.append((1 - len(stop_events_u) / len(coords_u)) * 100)
 
             stop_events.append(stop_events_u)
             event_maps.append(event_map_u)
 
-        if self.verbose:
+        if self._verbose:
             print("    --> %sreduction was %.1f%%" % ("average " if self.multiuser else "", np.mean(avg_reduction)))
         
         # Merge `stop_events` from different users into `stat_coords`
         try:
-            self.stat_coords = np.vstack([se for se in stop_events if len(se) > 0])
+            self._stat_coords = np.vstack([se for se in stop_events if len(se) > 0])
         except ValueError:
             raise Exception("No stop events found. Check that `r1`, `min_staying_time` and `min_size` parameters are chosen correctly.")
 
         # (2) Downsample (dramatically reduces computation time)
-        if self.min_spacial_resolution > 0:
-            self.stat_coords = np.around(self.stat_coords / self.min_spacial_resolution) * self.min_spacial_resolution
+        if self._min_spacial_resolution > 0:
+            self._stat_coords = np.around(self._stat_coords / self._min_spacial_resolution) * self._min_spacial_resolution
 
-        if self.verbose:
-            num_stat_orig = len(self.stat_coords)
+        if self._verbose:
+            num_stat_orig = len(self._stat_coords)
             print(f"Downsampling {num_stat_orig} total stop events to...", end=" ")
 
         # Only keep unique coordinates for clustering
-        self.stat_coords, inverse_indices, self.counts = np.unique(
-            self.stat_coords,
+        self._stat_coords, inverse_indices, self._counts = np.unique(
+            self._stat_coords,
             return_inverse=True, return_counts=True, axis=0
         )
 
-        if self.verbose:
-            print(f"{len(self.stat_coords)}", end=" ")
-            print("(%.1f%% duplicates)" % ((1 - len(self.stat_coords)/num_stat_orig)*100))
+        if self._verbose:
+            print(f"{len(self._stat_coords)}", end=" ")
+            print("(%.1f%% duplicates)" % ((1 - len(self._stat_coords)/num_stat_orig)*100))
 
         # (3) Find neighbors within `r2` for each point
-        if self.verbose:
+        if self._verbose:
             print("Finding neighbors...", end=" ")
         
-        ball_tree_result = utils.query_neighbors(self.stat_coords, self.r2, self.distance_metric, self.weighted)
+        ball_tree_result = utils.query_neighbors(self._stat_coords, self._r2, self._distance_metric, self._weighted)
         
-        if self.weighted:
+        if self._weighted:
             node_idx_neighbors, node_idx_distances = ball_tree_result
         else:
             node_idx_neighbors, node_idx_distances = ball_tree_result, None
 
-        if self.verbose:
+        if self._verbose:
             print("done")
             
         # (4) Create network and run infomap
-        if self.verbose: print("Creating network and clustering with Infomap...")
-        self.stat_labels = utils.label_network(
-            node_idx_neighbors, node_idx_distances, self.counts, self.weight_exponent,
-            self.label_singleton, self.distance_metric, self.verbose
+        if self._verbose: print("Creating network and clustering with Infomap...")
+        self._stat_labels = utils.label_network(
+            node_idx_neighbors, node_idx_distances, self._counts, self._weight_exponent,
+            self._label_singleton, self._distance_metric, self._verbose
         )
 
         # (5) Reverse the downsampling in step (2)
-        self.labels = self.stat_labels[inverse_indices]
+        self._labels = self._stat_labels[inverse_indices]
         
         # (6) Reverse the downsampling in step (1)
-        self.coord_labels = []
+        self.labels = []
         for j, event_map_u in enumerate(event_maps):
             i0 = sum([len(stop_events[j_]) for j_ in range(j)])
             i1 = sum([len(stop_events[j_]) for j_ in range(j+1)])
-            labels_u = np.hstack([self.labels[i0:i1], -1])
-            self.coord_labels.append(labels_u[event_map_u])
+            labels_u = np.hstack([self._labels[i0:i1], -1])
+            self.labels.append(labels_u[event_map_u])
 
         # Update model state and return labels
-        self.is_fitted = True
+        self._is_fitted = True
         if self.multiuser:
-            return self.coord_labels
+            return self.labels
         else:
-            return self.coord_labels[0]
+            return self.labels[0]
+
+
+    def compute_label_medians(self):
+        """Compute the median location of inferred labels.
+
+        Returns
+        -------
+            label_medians : dict, {label: [lat, lon]}
+
+        Example
+        -------
+            >>> label_medians = model.compute_label_medians()
+        """
+        # Assert model is fitted
+        self._fitted_assertion()
+
+        # Stack labels and coords
+        labels_and_coords = np.hstack([self._stat_labels.reshape(-1, 1), self._stat_coords])
+
+        # Remove outliers
+        labels_and_coords = labels_and_coords[labels_and_coords[:, 0] != -1]
+
+        # Get unique labels
+        unique_labels = np.unique(labels_and_coords[:, 0]).astype(int)
+
+        # For each unique label, take the median of its points
+        unique_label_medians = [
+            np.median(labels_and_coords[labels_and_coords[:, 0] == label, 1:], axis=0).tolist()
+            for label in unique_labels
+        ]
+
+        # Zip into dictionary
+        self.label_medians = dict(zip(unique_labels, unique_label_medians))
+
+        return self.label_medians
+
+    
+    def compute_label_area(self):
+        """Compute the area of inferred stop locations
+        
+        Returns
+        -------
+            label_areas : dict, {label: area}
+
+        Example
+        -------
+            >>> label_areas = model.compute_label_areas()
+        """
+        # Assert model is fitted
+        self._fitted_assertion()
+        raise NotImplementedError
+
+
+    def compute_label_counts(self):
+        """Compute the count of inferred stop locations
+        
+        Returns
+        -------
+            label_counts : dict, {label: count}
+
+        Example
+        -------
+            >>> label_counts = model.compute_label_counts()
+        """
+        # Assert model is fitted
+        self._fitted_assertion()
+        raise NotImplementedError
+    
+
+    def predict(self, data):
+        """Predict labels of data given existing solution.
+        
+        # Returns
+        # -------
+        #     labels : dict, {label: count}
+
+        # Example
+        # -------
+        #     >>> label_counts = model.compute_label_counts()
+        """
+        # Assert model is fitted
+        self._fitted_assertion()
+        raise NotImplementedError
 
 
     def _hyperparam_assertions(self):
-        assert self.r1 > 0, \
+        assert self._r1 > 0, \
                "`r1` must be > 0"
-        assert self.r2 > 0, \
+        assert self._r2 > 0, \
                "`r2` must be > 0"
-        assert type(self.label_singleton) is bool, \
+        assert type(self._label_singleton) is bool, \
                "`label_singleton` either `True` or `False`"
-        assert self.min_staying_time > 0, \
+        assert self._min_staying_time > 0, \
                "`min_staying_time` must be > 0"
-        assert self.max_time_between > 0, \
+        assert self._max_time_between > 0, \
                "`max_time_between` must be > 0"
-        assert self.max_time_between > self.min_staying_time, \
+        assert self._max_time_between > self._min_staying_time, \
                "`max_time_between` must be > min_staying_time"
-        assert self.min_size > 1, \
+        assert self._min_size > 1, \
                "`min_size` must be > 1"
-        assert 0 <= self.min_spacial_resolution <= 1, \
+        assert 0 <= self._min_spacial_resolution <= 1, \
                "`min_spacial_resolution` must be within [0, 1]"
-        assert self.distance_metric in ['euclidean', 'haversine'], \
+        assert self._distance_metric in ['euclidean', 'haversine'], \
                "`distance_metric` should be either 'euclidean' or 'haversine'"
 
 
@@ -259,11 +349,16 @@ class Infostop:
             if coords_u.shape[1] == 3:
                 assert np.all(coords_u[:-1, 2] <= coords_u[1:, 2]), \
                        "%sTimestamps must be ordered" % error_insert
-            if self.distance_metric == 'haversine':
+            if self._distance_metric == 'haversine':
                 assert (np.min(coords_u[:, 0]) > -90 and np.max(coords_u[:, 0]) < 90), \
                        "%sLatitude (column 0) must have values between -90 and 90" % error_insert
                 assert (np.min(coords_u[:, 1]) > -180 and np.max(coords_u[:, 1]) < 180), \
                        "%sLongitude (column 1) must have values between -180 and 180" % error_insert
+
+    
+    def _fitted_assertion(self):
+        assert self._is_fitted, \
+                "Model must be fitted before label medians can be computed."
 
 
 class SpatialInfomap:
@@ -321,19 +416,19 @@ class SpatialInfomap:
         verbose=False
     ):
         # Set input parameters as attributes
-        self.r2 = r2
-        self.label_singleton = label_singleton
-        self.min_spacial_resolution = min_spacial_resolution
-        self.distance_metric = distance_metric
-        self.weighted = weighted
-        self.weight_exponent = weight_exponent
-        self.verbose = verbose
-        self.data = None
-        self.stat_coords = None
-        self.stat_labels = None
-        self.counts = None
-        self.labels = None
-        self.is_fitted = False
+        self._r2 = r2
+        self._label_singleton = label_singleton
+        self._min_spacial_resolution = min_spacial_resolution
+        self._distance_metric = distance_metric
+        self._weighted = weighted
+        self._weight_exponent = weight_exponent
+        self._verbose = verbose
+        self._data = None
+        self._stat_coords = None
+        self._stat_labels = None
+        self._counts = None
+        self._labels = None
+        self._is_fitted = False
 
         # Run hyper parameter assertions
         self._hyperparam_assertions()
@@ -361,70 +456,70 @@ class SpatialInfomap:
             >>> assert type(traces) == type(labels)
         """
         
-        if self.verbose: progress = tqdm
+        if self._verbose: progress = tqdm
         else:            progress = utils.pass_func
 
-        self.data = data
+        self._data = data
 
         # Assert the input data
-        self._data_assertions(self.data)
+        self._data_assertions(self._data)
         
         # (1) Downsample (dramatically reduces computation time)
-        self.stat_coords = data
-        if self.min_spacial_resolution > 0:
-            self.stat_coords = np.around(self.stat_coords / self.min_spacial_resolution) * self.min_spacial_resolution
+        self._stat_coords = data
+        if self._min_spacial_resolution > 0:
+            self._stat_coords = np.around(self._stat_coords / self._min_spacial_resolution) * self._min_spacial_resolution
 
-        if self.verbose:
-            num_stat_orig = len(self.stat_coords)
+        if self._verbose:
+            num_stat_orig = len(self._stat_coords)
             print(f"Downsampling {num_stat_orig} total stop events to...", end=" ")
 
         # Only keep unique coordinates for clustering
-        self.stat_coords, inverse_indices, self.counts = np.unique(
-            self.stat_coords,
+        self._stat_coords, inverse_indices, self._counts = np.unique(
+            self._stat_coords,
             return_inverse=True, return_counts=True, axis=0
         )
 
-        if self.verbose:
-            print(f"{len(self.stat_coords)}", end=" ")
-            print("(%.1f%% duplicates)" % ((1 - len(self.stat_coords)/num_stat_orig)*100))
+        if self._verbose:
+            print(f"{len(self._stat_coords)}", end=" ")
+            print("(%.1f%% duplicates)" % ((1 - len(self._stat_coords)/num_stat_orig)*100))
 
         # (2) Find neighbors within `r2` for each point
-        if self.verbose:
+        if self._verbose:
             print("Finding neighbors...", end=" ")
         
-        ball_tree_result = utils.query_neighbors(self.stat_coords, self.r2, self.distance_metric, self.weighted)
+        ball_tree_result = utils.query_neighbors(self._stat_coords, self._r2, self._distance_metric, self._weighted)
         
-        if self.weighted:
+        if self._weighted:
             node_idx_neighbors, node_idx_distances = ball_tree_result
         else:
             node_idx_neighbors, node_idx_distances = ball_tree_result, None
 
-        if self.verbose:
+        if self._verbose:
             print("done")
             
         # (3) Create network and run infomap
-        if self.verbose: print("Creating network and clustering with Infomap...")
-        self.stat_labels = utils.label_network(
-            node_idx_neighbors, node_idx_distances, self.counts, self.weight_exponent,
-            self.label_singleton, self.distance_metric, self.verbose
+        if self._verbose: print("Creating network and clustering with Infomap...")
+        self._stat_labels = utils.label_network(
+            node_idx_neighbors, node_idx_distances, self._counts, self._weight_exponent,
+            self._label_singleton, self._distance_metric, self._verbose
         )
 
         # (4) Reverse the downsampling in step (2)
-        self.labels = self.stat_labels[inverse_indices]
+        self._labels = self._stat_labels[inverse_indices]
 
         # Update model state and return labels
-        self.is_fitted = True
-        return self.labels
+        self._is_fitted = True
+        return self._labels
 
 
     def _hyperparam_assertions(self):
-        assert self.r2 > 0, \
+        assert self._r2 > 0, \
                "`r2` must be > 0"
-        assert type(self.label_singleton) is bool, \
+        assert type(self._label_singleton) is bool, \
                "`label_singleton` either `True` or `False`"
-        assert 0 <= self.min_spacial_resolution <= 1, \
+        assert 0 <= self._min_spacial_resolution <= 1, \
                "`min_spacial_resolution` must be within [0, 1]"
-        assert self.distance_metric in ['euclidean', 'haversine'], \
+        assert self._distance_metric in ['euclidean', 'haversine'], \
                "`distance_metric` should be either 'euclidean' or 'haversine'"
 
 
@@ -433,7 +528,7 @@ class SpatialInfomap:
                f"There are {np.isnan(np.vstack(data))} NaN values in the input data."
         assert data.shape[1] == 2, \
                "Number of columns must be 2"
-        if self.distance_metric == 'haversine':
+        if self._distance_metric == 'haversine':
             assert (np.min(data[:, 0]) > -90 and np.max(data[:, 0]) < 90), \
                    "Latitude (column 0) must have values between -90 and 90"
             assert (np.min(data[:, 1]) > -180 and np.max(data[:, 1]) < 180), \
