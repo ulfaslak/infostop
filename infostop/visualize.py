@@ -177,16 +177,16 @@ def plot_map(model, display_data="unique_stationary", polygons=True, scatter=Fal
     -------
         >>> # create model and fit it to data
         >>> model = Infostop()
-        >>> _ = model.fit_predict(traces)
+        >>> _ = model._fit_predict(traces)
         >>> # visualize result
         >>> folmap = visualize.plot_map(model)
         >>> folmap.m
     """
-    assert hasattr(model, "is_fitted"), \
+    assert hasattr(model, "_is_fitted"), \
            "`model` must either be an instance of `Infostop` or `SpatialInfomap`."
-    assert model.is_fitted, \
+    assert model._is_fitted, \
            "It appears that no data is fitted to the model."
-    assert model.distance_metric == "haversine", \
+    assert model._distance_metric == "haversine", \
            "`distance_metric` is not 'haversine'."
     assert display_data in ['all', 'all_stationary', 'all_nonstationary', 'unique_stationary'], \
            'Keyword argument `display_data` must be one of "all", "all_stationary", "all_nonstationary" and "unique_stationary".'
@@ -194,8 +194,8 @@ def plot_map(model, display_data="unique_stationary", polygons=True, scatter=Fal
     # If it's an instance of Infostop
     if hasattr(model, "r1"):
         if "all" in display_data:
-            data_unique, indices_unique = np.unique(np.vstack(model.data)[:, :2], axis=0, return_index=True)
-            labels_unique = np.hstack(model.coord_labels)[indices_unique]
+            data_unique, indices_unique = np.unique(np.vstack(model._data)[:, :2], axis=0, return_index=True)
+            labels_unique = np.hstack(model._coord_labels)[indices_unique]
             if display_data == "all":
                 points = data_unique
                 labels = labels_unique
@@ -206,13 +206,13 @@ def plot_map(model, display_data="unique_stationary", polygons=True, scatter=Fal
                 points = data_unique[labels_unique==-1]
                 labels = labels_unique[labels_unique==-1]
         elif display_data == "unique_stationary":
-            points = model.stat_coords[model.stat_labels >= 0]
-            labels = model.stat_labels[model.stat_labels >= 0]
+            points = model._stat_coords[model._stat_labels >= 0]
+            labels = model._stat_labels[model._stat_labels >= 0]
 
     # If it's an instance of SpatialInfomap
     else:
-        points = model.stat_coords[model.stat_labels >= 0]
-        labels = model.stat_labels[model.stat_labels >= 0]
+        points = model._stat_coords[model._stat_labels >= 0]
+        labels = model._stat_labels[model._stat_labels >= 0]
 
     folmap = FoliumMap(
         points=points,
