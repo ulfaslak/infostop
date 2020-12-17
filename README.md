@@ -52,7 +52,7 @@ Plotting this onto a map:
 
 ![img](https://ulfaslak.com/files/infostop_example_geomap.png)
 
-For more examples and full documentation check out the [documentation](https://infostop.readthedocs.io/en/latest/about.html) page.
+For more examples and full documentation check out the [documentation](https://infostop.readthedocs.io/en/latest/about.html) page (*DOCUMENTATION IS OUTDATED*).
 
 ## Advantages
 * **Simplicity**: At its core, the method works by two steps. (1) Reducing the location trace to the medians of each stationary event and (2) embedding the resulting locations into a network that connects locations that are within a user-defined distance and clustering that network.
