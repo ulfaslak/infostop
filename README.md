@@ -3,6 +3,8 @@
 
 This package implements the algorithm described in https://arxiv.org/pdf/2003.14370.pdf, for detecting stop locations in time-ordered location data.
 
+Infostop is useful to anyone who wishes to detect stationary events in location coordinate streams. It is, thus, a framework to simplify dense and rich location time-series into sequences of events.
+
 ## Usage
 Given a location trace such as:
 
