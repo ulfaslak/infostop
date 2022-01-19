@@ -2,8 +2,12 @@ import numpy as np
 import cpputils
 from infostop import utils
 from tqdm import tqdm
- 
 
+
+class NoStopsFoundException(Exception):
+    pass
+
+ 
 class Infostop:
     """Infer stop-location labels from mobility trace. Dynamic points are labeled -1.
 
@@ -175,7 +179,7 @@ class Infostop:
         try:
             self._stat_coords = np.vstack([se for se in stop_events if len(se) > 0])
         except ValueError:
-            raise Exception("No stop events found. Check that `r1`, `min_staying_time` and `min_size` parameters are chosen correctly.")
+            raise NoStopsFoundException("No stop events found. Check that `r1`, `min_staying_time` and `min_size` parameters are chosen correctly.")
 
         # (2) Downsample (dramatically reduces computation time)
         if self._min_spacial_resolution > 0:
