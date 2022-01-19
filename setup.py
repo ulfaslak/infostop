@@ -108,7 +108,9 @@ setup(
         'pybind11>=2.4',
         'infomap>=1.0.6',
         'folium>=0.7.0',
-        'numpy'
+        'numpy',
+        'tqdm',
+        'scikit-learn',
     ],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
