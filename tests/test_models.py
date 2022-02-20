@@ -13,4 +13,4 @@ def test_example():
     returns = "I'm an example function"
 
     # Test
-    assert func(**params) == returns
+    assert func(**params) != returns
