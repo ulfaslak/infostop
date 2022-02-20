@@ -64,19 +64,20 @@ Plotting this onto a map:
 `pip install infostop`
 
 ## Development notes
-We welcome any contributions to this project. If you would like to get started, you may want to read the following notes.
+We welcome contributions. Before you get started, you may want to read the notes below.
 
-**Create a virtual environment**. In your local clone of this project, do:
+You should **create a virtual environment**. In your local `infostop` folder, do:
 ```Bash
 $ python -m venv env
 $ source env/bin/activate
 ```
 
-**Install `infostop`** into your virtual environment:
+**Install `infostop`** into your virtual environment.
 Do this by running:
 ```Bash
 (env) $ make install
 ```
+This command will also delete any pre-existing installation of Infostop, so you will probably want to run it after each code update.
 
 **Run tests**:
 ```Bash
@@ -91,16 +92,11 @@ Do this by running:
 ```
 Then go to localhost:8001 in your browser to look at the coverage report.
 
-Once you're all set up, the development cycle will probably look something like this:
-1. Make some updates to the code
-2. Run `make install` to reinstall Infostop with the new updates
-3. Check that stuff works
-
 The `Makefile` implements a number of commands that are useful during development.
 Go ahead and execute `make help` to see descriptions of available commands, or inspect the file so you understand what's going on. 
 
-**Convenient: Creating a Jupyter kernel with the virtual environment**
-If you like to test and develop code using Jupyter notebooks, you can install the virtual environment into Jupyter as a kernel. Run:
+**Convenient: create an ipykernel for the virtual environment**
+If you use Jupyter notebooks, you can install the virtual environment into Jupyter as a kernel. Run:
 ```Bash
 (env) $ pip install ipykernel
 (env) $ python -m ipykernel install --user --name=infostop_env
