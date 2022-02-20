@@ -335,13 +335,13 @@ class Infostop:
     def predict(self, data):
         """Predict labels of data given existing solution.
 
-        # Returns
-        # -------
-        #     labels : dict, {label: count}
+        Returns
+        -------
+            labels : dict, {label: count}
 
-        # Example
-        # -------
-        #     >>> label_counts = model.compute_label_counts()
+        Example
+        -------
+            >>> label_counts = model.compute_label_counts()
         """
         # Assert model is fitted
         self._fitted_assertion()

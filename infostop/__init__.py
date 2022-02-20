@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-This package implements stop location detection using Infomap.
+This package implements stop location detection.
 """
 
 from .deprecated import label_trace

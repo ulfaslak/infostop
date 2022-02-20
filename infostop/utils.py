@@ -5,12 +5,14 @@ from infomap import Infomap
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
 
+
 def pass_func(input, **kwargs):
     return input
 
-def query_neighbors(coords, r2, distance_metric='haversine', weighted=False):
+
+def query_neighbors(coords, r2, distance_metric="haversine", weighted=False):
     """Build a network from a set of points and a threshold distance.
-    
+
     Parameters
     ----------
         coords : array-like (N, 2)
@@ -18,7 +20,7 @@ def query_neighbors(coords, r2, distance_metric='haversine', weighted=False):
             Threshold distance.
         distance_metric : str
             Either 'haversine' or None.
-    
+
     Returns
     -------
         nodes : list of ints
@@ -28,9 +30,9 @@ def query_neighbors(coords, r2, distance_metric='haversine', weighted=False):
         singleton nodes : list of ints
             Nodes that have no connections, e.g. have been visited once.
     """
-    
+
     # If the metric is haversine update points (to radians) and r2 accordingly.
-    if distance_metric == 'haversine':
+    if distance_metric == "haversine":
         coords = np.radians(coords)
         r2 = r2 / 6371000
 
@@ -41,9 +43,16 @@ def query_neighbors(coords, r2, distance_metric='haversine', weighted=False):
     return tree.query_radius(coords, r=r2, return_distance=weighted)
 
 
-def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_exponent, distance_metric, verbose):
+def infomap_communities(
+    node_idx_neighbors,
+    node_idx_distances,
+    counts,
+    weight_exponent,
+    distance_metric,
+    verbose,
+):
     """Two-level partition of single-layer network with Infomap.
-    
+
     Parameters
     ----------
         node_index_neighbors : array of arrays
@@ -54,19 +63,24 @@ def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_e
     -------
         out : dict (node-community hash map).
     """
-    # Tracking 
-    if verbose: progress = tqdm
-    else:       progress = pass_func
+    # Tracking
+    if verbose:
+        progress = tqdm
+    else:
+        progress = pass_func
 
     # Initiate  two-level Infomap
     network = Infomap("--two-level" + (" --silent" if not verbose else ""))
 
     # Add nodes (and reindex nodes because Infomap wants ranked indices)
-    if verbose: print("    ... adding nodes:")
+    if verbose:
+        print("    ... adding nodes:")
     name_map, name_map_inverse = {}, {}
     singleton_nodes = []
     infomap_idx = 0
-    for n, neighbors in progress(enumerate(node_idx_neighbors), total=len(node_idx_neighbors)):
+    for n, neighbors in progress(
+        enumerate(node_idx_neighbors), total=len(node_idx_neighbors)
+    ):
         if len(neighbors) > 1:
             network.addNode(infomap_idx)
             name_map_inverse[infomap_idx] = n
@@ -76,43 +90,65 @@ def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_e
             singleton_nodes.append(n)
 
     if verbose:
-        print(f"    --> added {len(name_map)} nodes (found {len(singleton_nodes)} singleton nodes)")
+        print(
+            f"    --> added {len(name_map)} nodes (found {len(singleton_nodes)} singleton nodes)"
+        )
 
-    
     # Add links
     if verbose:
         n_edges = 0
         print("    ... adding edges")
 
     if node_idx_distances is None:
-        for node, neighbors in progress(enumerate(node_idx_neighbors), total=len(node_idx_neighbors)):
+        for node, neighbors in progress(
+            enumerate(node_idx_neighbors), total=len(node_idx_neighbors)
+        ):
             for neighbor in neighbors[neighbors > node]:
-                network.addLink(name_map[node], name_map[neighbor], max(counts[node], counts[neighbor]))
-                if verbose: n_edges += 1
+                network.addLink(
+                    name_map[node],
+                    name_map[neighbor],
+                    max(counts[node], counts[neighbor]),
+                )
+                if verbose:
+                    n_edges += 1
     else:
-        for node, (neighbors, distances) in progress(enumerate(zip(node_idx_neighbors, node_idx_distances)), total=len(node_idx_neighbors)):
-            for neighbor, distance in zip(neighbors[neighbors > node], distances[neighbors > node]):
+        for node, (neighbors, distances) in progress(
+            enumerate(zip(node_idx_neighbors, node_idx_distances)),
+            total=len(node_idx_neighbors),
+        ):
+            for neighbor, distance in zip(
+                neighbors[neighbors > node], distances[neighbors > node]
+            ):
                 if distance_metric == "haversine":
                     distance *= 6371000
-                network.addLink(name_map[node], name_map[neighbor], max(counts[node], counts[neighbor]) * distance**(-weight_exponent))
-                if verbose: n_edges += 1
-    
+                network.addLink(
+                    name_map[node],
+                    name_map[neighbor],
+                    max(counts[node], counts[neighbor])
+                    * distance ** (-weight_exponent),
+                )
+                if verbose:
+                    n_edges += 1
+
     if verbose:
         print(f"    --> added {n_edges} edges")
 
     # Run infomap
-    if verbose: print("    ... running Infomap...", end=" ")
+    if verbose:
+        print("    ... running Infomap...", end=" ")
     if len(name_map) > 0:
         network.run()
-    	# Convert to node-community dict format
-        partition = dict([
-            (name_map_inverse[infomap_idx], module)
-            for infomap_idx, module in network.modules
-        ])
-        if verbose: print("done")
+        # Convert to node-community dict format
+        partition = dict(
+            [
+                (name_map_inverse[infomap_idx], module)
+                for infomap_idx, module in network.modules
+            ]
+        )
+        if verbose:
+            print("done")
     else:
         partition = {}
-
 
     if verbose:
         print(f"Found {len(set(partition.values()))-1} stop locations")
@@ -120,12 +156,20 @@ def infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_e
     return partition, singleton_nodes
 
 
-def label_network(node_idx_neighbors, node_idx_distances, counts, weight_exponent, label_singleton, distance_metric, verbose):
+def label_network(
+    node_idx_neighbors,
+    node_idx_distances,
+    counts,
+    weight_exponent,
+    label_singleton,
+    distance_metric,
+    verbose,
+):
     """Infer infomap clusters from distance matrix and link distance threshold.
-    
+
     Parameters
     ----------
-        nodes: array 
+        nodes: array
             Nodes in the network.
         edges: array
             Edges in the network (two nodes are connected if distance<r2).
@@ -134,7 +178,7 @@ def label_network(node_idx_neighbors, node_idx_distances, counts, weight_exponen
         label_singleton: bool
             If True, give stationary locations that was only visited once their own
             label. If False, label them as outliers (-1).
-            
+
     Returns
     -------
         out : array-like (N, )
@@ -142,29 +186,40 @@ def label_network(node_idx_neighbors, node_idx_distances, counts, weight_exponen
             and up, and typically locations with more observations have lower indices. If
             `label_singleton=False`, coordinates with no neighbors within distance `r2` are
             labeled -1.
-    """ 
+    """
     # Infer the partition with infomap. Partiton looks like `{node: community, ...}`
-    partition, singleton_nodes = infomap_communities(node_idx_neighbors, node_idx_distances, counts, weight_exponent, distance_metric, verbose)
-    
+    partition, singleton_nodes = infomap_communities(
+        node_idx_neighbors,
+        node_idx_distances,
+        counts,
+        weight_exponent,
+        distance_metric,
+        verbose,
+    )
+
     # Add new labels to each singleton point (stop that was further than r2 from
     # any other point and thus was not represented in the network)
     if label_singleton:
         max_label = max(partition.values(), default=-1)
-        partition.update(dict(zip(
-            singleton_nodes,
-            range(max_label+1, max_label+1+len(singleton_nodes))
-        )))
-    
+        partition.update(
+            dict(
+                zip(
+                    singleton_nodes,
+                    range(max_label + 1, max_label + 1 + len(singleton_nodes)),
+                )
+            )
+        )
+
     # Cast the partition as a vector of labels like `[0, 1, 0, 3, 0, 0, 2, ...]`
-    return np.array([
-        partition[n] if n in partition else -1
-        for n in range(len(node_idx_neighbors))
-    ])
+    return np.array(
+        [partition[n] if n in partition else -1 for n in range(len(node_idx_neighbors))]
+    )
+
 
 def max_pdist(points):
-    """ 
+    """
     Calculate the distance bewteen each pair in a set of points given a distance function.
-    
+
     Author: Piotr Sapiezynski
     Source: https://github.com/sapiezynski/haversinevec
 
@@ -176,22 +231,24 @@ def max_pdist(points):
     Output
     ------
         result : array-like (shape=(N*(N-1)//2, ))
-    """ 
+    """
+
     def _l2(points_a, points_b):
-        return np.linalg.norm((points_a - points_b).reshape(-1,2),axis = 1)
+        return np.linalg.norm((points_a - points_b).reshape(-1, 2), axis=1)
 
     c = points.shape[0]
-    result = np.zeros((c*(c-1)//2,), dtype=np.float64)
+    result = np.zeros((c * (c - 1) // 2,), dtype=np.float64)
     vec_idx = 0
-    for idx in range(0, c-1):
+    for idx in range(0, c - 1):
         ref = points[idx]
-        temp = _l2(points[idx+1:c, :], ref)
-        #to be taken care of
-        result[vec_idx:vec_idx+temp.shape[0]] = temp
+        temp = _l2(points[idx + 1 : c, :], ref)
+        # to be taken care of
+        result[vec_idx : vec_idx + temp.shape[0]] = temp
         vec_idx += temp.shape[0]
     return max(result)
 
-def convex_hull(points, to_return='points'):
+
+def convex_hull(points, to_return="points"):
     """Return the convex hull of a collection of points."""
     try:
         hull = ConvexHull(points)
@@ -202,9 +259,11 @@ def convex_hull(points, to_return='points'):
             l = 5e-5
         else:
             l = max_pdist(points)
-        return np.vstack([
-            c + np.array([-l/2, -l/2]),  # bottom left
-            c + np.array([l/2, -l/2]),   # bottom right
-            c + np.array([l/2, l/2]),    # top right
-            c + np.array([-l/2, l/2]),    # top right
-        ])
+        return np.vstack(
+            [
+                c + np.array([-l / 2, -l / 2]),  # bottom left
+                c + np.array([l / 2, -l / 2]),  # bottom right
+                c + np.array([l / 2, l / 2]),  # top right
+                c + np.array([-l / 2, l / 2]),  # top right
+            ]
+        )
