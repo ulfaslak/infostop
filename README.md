@@ -68,8 +68,7 @@ We welcome contributions. Before you get started, you may want to read the notes
 
 You should **create a virtual environment**. In your local `infostop` folder, do:
 ```Bash
-$ python -m venv env
-$ source env/bin/activate
+$ make env
 ```
 
 **Install `infostop`** into your virtual environment.
