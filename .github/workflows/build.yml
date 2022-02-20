@@ -28,6 +28,17 @@ jobs:
       - name: Install dependencies
         run: |
           make deps
+
+      - name: Install Infostop
+        run: |
+          make install
+
       - name: Run tests
         run: |
           make test
+
+      - name: Publish a Python distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
