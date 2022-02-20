@@ -4,6 +4,10 @@ from infostop import utils
 from tqdm import tqdm
 
 
+class NoStopsFoundException(Exception):
+    pass
+
+
 class Infostop:
     """Infer stop-location labels from mobility trace. Dynamic points are labeled -1.
 
