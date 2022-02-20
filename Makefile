@@ -12,7 +12,7 @@ coverage:  ## Run tests with coverage
 
 deps:  ## Install dependencies
 	pip install --upgrade pip
-	pip install black coverage pytest twine
+	pip install black coverage pytest build
 	if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
 test:  ## Run tests
@@ -25,6 +25,10 @@ pipinstall:  ## Pip install package
 install:  ## setup.py install package
 	make clean
 	python setup.py install
+
+build:  ## Build package to dist/
+	make clean
+	python -m build --sdist --wheel --outdir dist/
 
 clean:  ## Clean compiled program
 	-rm -f *.o
