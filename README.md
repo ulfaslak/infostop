@@ -92,6 +92,8 @@ This command will also delete any pre-existing installation of Infostop, so you 
 ```
 Then go to localhost:8001 in your browser to look at the coverage report.
 
+**Format code with `black`**. We don't want to argue about code formatting. Please run `black` to apply standard formatting to your code before your make a pull request.
+
 The `Makefile` implements a number of commands that are useful during development.
 Go ahead and execute `make help` to see descriptions of available commands, or inspect the file so you understand what's going on. 
 
