@@ -1,6 +1,8 @@
 # Infostop
 *Python package for detecting stop locations in mobility data*
 
+[![Build Status][build-image]][build-url]
+
 This package implements the algorithm described in https://arxiv.org/pdf/2003.14370.pdf, for detecting stop locations in time-ordered location data.
 
 Infostop is useful to anyone who wishes to detect stationary events in location coordinate streams. It is, thus, a framework to simplify dense and rich location time-series into sequences of events.
@@ -103,3 +105,14 @@ If you use Jupyter notebooks, you can install the virtual environment into Jupyt
 (env) $ python -m ipykernel install --user --name=infostop_env
 ```
 This lets you select the virtual environment as a kernel in a Jupyter notebook.
+
+**Versioning and deployment to PyPI**
+If your update should trigger a version increment and package rerelease, please execute the `increment_version.py` script ONCE and [tag](https://git-scm.com/book/en/v2/Git-Basics-Tagging) your final commit. After running the `commit` command, to tag the commit you would run something like:
+```Bash
+(env) $ git tag -a v1.0.11 -m "Infostop version 1.0.11"
+```
+When mergining a PR with a tagged commit, the PyPI deployment action is triggered, and the new version of Infostop becomes publicly available shortly thereafter.
+
+
+[build-image]: https://github.com/ulfaslak/infostop/actions/workflows/deploy.yml/badge.svg
+[build-url]: https://github.com/ulfaslak/infostop/actions/workflows/deploy.yml
