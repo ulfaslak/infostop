@@ -54,8 +54,6 @@ Plotting this onto a map:
 
 ![img](https://ulfaslak.com/files/infostop_example_geomap.png)
 
-For more examples and full documentation check out the [documentation](https://infostop.readthedocs.io/en/latest/about.html) page (*DOCUMENTATION IS OUTDATED*).
-
 ## Advantages
 * **Simplicity**: At its core, the method works by two steps. (1) Reducing the location trace to the medians of each stationary event and (2) embedding the resulting locations into a network that connects locations that are within a user-defined distance and clustering that network.
 * **Multi-trace support:** Currently, no other libraries support clustering multiple traces at once to find global stop locations. Infostop does. The image above visualizes stop locations at a campus for a population of almost 1000 university students.
@@ -64,3 +62,47 @@ For more examples and full documentation check out the [documentation](https://i
 
 ## Installation
 `pip install infostop`
+
+## Development notes
+We welcome any contributions to this project. If you would like to get started, you may want to read the following notes.
+
+**Create a virtual environment**. In your local clone of this project, do:
+```Bash
+$ python -m venv env
+$ source env/bin/activate
+```
+
+**Install `infostop`** into your virtual environment:
+Do this by running:
+```Bash
+(env) $ make install
+```
+
+**Run tests**:
+```Bash
+(env) $ make test
+```
+
+**Check test coverage**:
+```Bash
+(env) $ make coverage
+(env) $ cd htmlcov
+(env) $ python -m http.server 8001
+```
+Then go to localhost:8001 in your browser to look at the coverage report.
+
+Once you're all set up, the development cycle will probably look something like this:
+1. Make some updates to the code
+2. Run `make install` to reinstall Infostop with the new updates
+3. Check that stuff works
+
+The `Makefile` implements a number of commands that are useful during development.
+Go ahead and execute `make help` to see descriptions of available commands, or inspect the file so you understand what's going on. 
+
+**Convenient: Creating a Jupyter kernel with the virtual environment**
+If you like to test and develop code using Jupyter notebooks, you can install the virtual environment into Jupyter as a kernel. Run:
+```Bash
+(env) $ pip install ipykernel
+(env) $ python -m ipykernel install --user --name=infostop_env
+```
+This lets you select the virtual environment as a kernel in a Jupyter notebook.
