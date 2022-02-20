@@ -29,7 +29,7 @@ class Infostop:
         r2 : int/float
             Max distance between stationary points to form an edge.
         label_singleton: bool
-            If True, give stationary locations that was only visited once their own label. If False, 
+            If True, give stationary locations that was only visited once their own label. If False,
             label them as non-stationary (-1).
         min_staying_time : int
             The shortest duration that can constitute a stop.
@@ -74,10 +74,10 @@ class Infostop:
         max_time_between=86400,
         min_size=2,
         min_spacial_resolution=0,
-        distance_metric='haversine',
+        distance_metric="haversine",
         weighted=False,
         weight_exponent=1,
-        verbose=False
+        verbose=False,
     ):
         # Set input parameters as attributes
         self._r1 = r1
@@ -140,15 +140,16 @@ class Infostop:
         if type(data) != list:
             self._data = [data]
             self.multiuser = False
-            # no need to log progress in (1) if there's just one user
-            progress = utils.pass_func
+            progress = (
+                utils.pass_func
+            )  # no need to log progress in (1) if there's just one user
         else:
             self._data = data
             if len(data) == 1:
                 progress = utils.pass_func
 
         if self._verbose:
-            print('Multiuser input:', self.multiuser)
+            print("Multiuser input:", self.multiuser)
 
         # Assert the input data
         self._data_assertions(self._data)
@@ -161,56 +162,64 @@ class Infostop:
         stop_events, event_maps = [], []
         for u, coords_u in progress(enumerate(self._data), total=len(self._data)):
             stop_events_u, event_map_u = cpputils.get_stationary_events(
-                coords_u, self._r1, self._min_size, self._min_staying_time,
-                self._max_time_between, self._distance_metric
+                coords_u,
+                self._r1,
+                self._min_size,
+                self._min_staying_time,
+                self._max_time_between,
+                self._distance_metric,
             )
 
             if self._verbose:
-                avg_reduction.append(
-                    (1 - len(stop_events_u) / len(coords_u)) * 100)
+                avg_reduction.append((1 - len(stop_events_u) / len(coords_u)) * 100)
 
             stop_events.append(stop_events_u)
             event_maps.append(event_map_u)
 
         if self._verbose:
-            print("    --> %sreduction was %.1f%%" %
-                  ("average " if self.multiuser else "", np.mean(avg_reduction)))
+            print(
+                "    --> %sreduction was %.1f%%"
+                % ("average " if self.multiuser else "", np.mean(avg_reduction))
+            )
 
         # Merge `stop_events` from different users into `stat_coords`
         try:
-            self._stat_coords = np.vstack(
-                [se for se in stop_events if len(se) > 0])
+            self._stat_coords = np.vstack([se for se in stop_events if len(se) > 0])
         except ValueError:
             raise Exception(
-                "No stop events found. Check that `r1`, `min_staying_time` and `min_size` parameters are chosen correctly.")
+                "No stop events found. Check that `r1`, `min_staying_time` and `min_size` parameters are chosen correctly."
+            )
 
         # (2) Downsample (dramatically reduces computation time)
         if self._min_spacial_resolution > 0:
-            self._stat_coords = np.around(
-                self._stat_coords / self._min_spacial_resolution) * self._min_spacial_resolution
+            self._stat_coords = (
+                np.around(self._stat_coords / self._min_spacial_resolution)
+                * self._min_spacial_resolution
+            )
 
         if self._verbose:
             num_stat_orig = len(self._stat_coords)
-            print(
-                f"Downsampling {num_stat_orig} total stop events to...", end=" ")
+            print(f"Downsampling {num_stat_orig} total stop events to...", end=" ")
 
         # Only keep unique coordinates for clustering
         self._stat_coords, inverse_indices, self._counts = np.unique(
-            self._stat_coords,
-            return_inverse=True, return_counts=True, axis=0
+            self._stat_coords, return_inverse=True, return_counts=True, axis=0
         )
 
         if self._verbose:
             print(f"{len(self._stat_coords)}", end=" ")
-            print("(%.1f%% duplicates)" %
-                  ((1 - len(self._stat_coords)/num_stat_orig)*100))
+            print(
+                "(%.1f%% duplicates)"
+                % ((1 - len(self._stat_coords) / num_stat_orig) * 100)
+            )
 
         # (3) Find neighbors within `r2` for each point
         if self._verbose:
             print("Finding neighbors...", end=" ")
 
         ball_tree_result = utils.query_neighbors(
-            self._stat_coords, self._r2, self._distance_metric, self._weighted)
+            self._stat_coords, self._r2, self._distance_metric, self._weighted
+        )
 
         if self._weighted:
             node_idx_neighbors, node_idx_distances = ball_tree_result
@@ -224,8 +233,13 @@ class Infostop:
         if self._verbose:
             print("Creating network and clustering with Infomap...")
         self._stat_labels = utils.label_network(
-            node_idx_neighbors, node_idx_distances, self._counts, self._weight_exponent,
-            self._label_singleton, self._distance_metric, self._verbose
+            node_idx_neighbors,
+            node_idx_distances,
+            self._counts,
+            self._weight_exponent,
+            self._label_singleton,
+            self._distance_metric,
+            self._verbose,
         )
 
         # (5) Reverse the downsampling in step (2)
@@ -235,7 +249,7 @@ class Infostop:
         self.labels = []
         for j, event_map_u in enumerate(event_maps):
             i0 = sum([len(stop_events[j_]) for j_ in range(j)])
-            i1 = sum([len(stop_events[j_]) for j_ in range(j+1)])
+            i1 = sum([len(stop_events[j_]) for j_ in range(j + 1)])
             labels_u = np.hstack([self._labels[i0:i1], -1])
             self.labels.append(labels_u[event_map_u])
 
@@ -262,7 +276,8 @@ class Infostop:
 
         # Stack labels and coords
         labels_and_coords = np.hstack(
-            [self._stat_labels.reshape(-1, 1), self._stat_coords])
+            [self._stat_labels.reshape(-1, 1), self._stat_coords]
+        )
 
         # Remove outliers
         labels_and_coords = labels_and_coords[labels_and_coords[:, 0] != -1]
@@ -273,7 +288,8 @@ class Infostop:
         # For each unique label, take the median of its points
         unique_label_medians = [
             np.median(
-                labels_and_coords[labels_and_coords[:, 0] == label, 1:], axis=0).tolist()
+                labels_and_coords[labels_and_coords[:, 0] == label, 1:], axis=0
+            ).tolist()
             for label in unique_labels
         ]
 
@@ -328,44 +344,52 @@ class Infostop:
         raise NotImplementedError
 
     def _hyperparam_assertions(self):
-        assert self._r1 > 0, \
-            "`r1` must be > 0"
-        assert self._r2 > 0, \
-            "`r2` must be > 0"
-        assert type(self._label_singleton) is bool, \
-            "`label_singleton` either `True` or `False`"
-        assert self._min_staying_time > 0, \
-            "`min_staying_time` must be > 0"
-        assert self._max_time_between > 0, \
-            "`max_time_between` must be > 0"
-        assert self._max_time_between > self._min_staying_time, \
-            "`max_time_between` must be > min_staying_time"
-        assert self._min_size > 1, \
-            "`min_size` must be > 1"
-        assert 0 <= self._min_spacial_resolution <= 1, \
-            "`min_spacial_resolution` must be within [0, 1]"
-        assert self._distance_metric in ['euclidean', 'haversine'], \
-            "`distance_metric` should be either 'euclidean' or 'haversine'"
+        assert self._r1 > 0, "`r1` must be > 0"
+        assert self._r2 > 0, "`r2` must be > 0"
+        assert (
+            type(self._label_singleton) is bool
+        ), "`label_singleton` either `True` or `False`"
+        assert self._min_staying_time > 0, "`min_staying_time` must be > 0"
+        assert self._max_time_between > 0, "`max_time_between` must be > 0"
+        assert (
+            self._max_time_between > self._min_staying_time
+        ), "`max_time_between` must be > min_staying_time"
+        assert self._min_size > 1, "`min_size` must be > 1"
+        assert (
+            0 <= self._min_spacial_resolution <= 1
+        ), "`min_spacial_resolution` must be within [0, 1]"
+        assert self._distance_metric in [
+            "euclidean",
+            "haversine",
+        ], "`distance_metric` should be either 'euclidean' or 'haversine'"
 
     def _data_assertions(self, data):
-        assert not np.any(np.isnan(np.vstack(data))), \
-            f"There are {np.isnan(np.vstack(data))} NaN values in the input data."
+        assert not np.any(
+            np.isnan(np.vstack(data))
+        ), f"There are {np.isnan(np.vstack(data))} NaN values in the input data."
         for u, coords_u in enumerate(data):
             error_insert = "" if not self.multiuser else f"User {u}: "
-            assert coords_u.shape[1] in [2, 3], \
+            assert coords_u.shape[1] in [2, 3], (
                 "%sNumber of columns must be 2 or 3" % error_insert
+            )
             if coords_u.shape[1] == 3:
-                assert np.all(coords_u[:-1, 2] <= coords_u[1:, 2]), \
+                assert np.all(coords_u[:-1, 2] <= coords_u[1:, 2]), (
                     "%sTimestamps must be ordered" % error_insert
-            if self._distance_metric == 'haversine':
-                assert (np.min(coords_u[:, 0]) > -90 and np.max(coords_u[:, 0]) < 90), \
-                    "%sLatitude (column 0) must have values between -90 and 90" % error_insert
-                assert (np.min(coords_u[:, 1]) > -180 and np.max(coords_u[:, 1]) < 180), \
-                    "%sLongitude (column 1) must have values between -180 and 180" % error_insert
+                )
+            if self._distance_metric == "haversine":
+                assert np.min(coords_u[:, 0]) > -90 and np.max(coords_u[:, 0]) < 90, (
+                    "%sLatitude (column 0) must have values between -90 and 90"
+                    % error_insert
+                )
+                assert np.min(coords_u[:, 1]) > -180 and np.max(coords_u[:, 1]) < 180, (
+                    "%sLongitude (column 1) must have values between -180 and 180"
+                    % error_insert
+                )
 
     def _fitted_assertion(self):
-        assert self._is_fitted, \
-            "Model must be fitted before label medians can be computed."
+        assert (
+            self._is_fitted
+        ), "Model must be fitted before label medians can be computed."
 
 
 class SpatialInfomap:
@@ -383,7 +407,7 @@ class SpatialInfomap:
         r2 : int/float
             Max distance between stationary points to form an edge.
         label_singleton: bool
-            If True, give stationary locations that was only visited once their own label. If False, 
+            If True, give stationary locations that was only visited once their own label. If False,
             label them as non-stationary (-1).
         min_spacial_resolution : float
             The minimal difference allowed between points before they are considered the same points.
@@ -418,10 +442,10 @@ class SpatialInfomap:
         r2=10,
         label_singleton=True,
         min_spacial_resolution=0,
-        distance_metric='haversine',
+        distance_metric="haversine",
         weighted=False,
         weight_exponent=1,
-        verbose=False
+        verbose=False,
     ):
         # Set input parameters as attributes
         self._r2 = r2
@@ -476,31 +500,34 @@ class SpatialInfomap:
         # (1) Downsample (dramatically reduces computation time)
         self._stat_coords = data
         if self._min_spacial_resolution > 0:
-            self._stat_coords = np.around(
-                self._stat_coords / self._min_spacial_resolution) * self._min_spacial_resolution
+            self._stat_coords = (
+                np.around(self._stat_coords / self._min_spacial_resolution)
+                * self._min_spacial_resolution
+            )
 
         if self._verbose:
             num_stat_orig = len(self._stat_coords)
-            print(
-                f"Downsampling {num_stat_orig} total stop events to...", end=" ")
+            print(f"Downsampling {num_stat_orig} total stop events to...", end=" ")
 
         # Only keep unique coordinates for clustering
         self._stat_coords, inverse_indices, self._counts = np.unique(
-            self._stat_coords,
-            return_inverse=True, return_counts=True, axis=0
+            self._stat_coords, return_inverse=True, return_counts=True, axis=0
         )
 
         if self._verbose:
             print(f"{len(self._stat_coords)}", end=" ")
-            print("(%.1f%% duplicates)" %
-                  ((1 - len(self._stat_coords)/num_stat_orig)*100))
+            print(
+                "(%.1f%% duplicates)"
+                % ((1 - len(self._stat_coords) / num_stat_orig) * 100)
+            )
 
         # (2) Find neighbors within `r2` for each point
         if self._verbose:
             print("Finding neighbors...", end=" ")
 
         ball_tree_result = utils.query_neighbors(
-            self._stat_coords, self._r2, self._distance_metric, self._weighted)
+            self._stat_coords, self._r2, self._distance_metric, self._weighted
+        )
 
         if self._weighted:
             node_idx_neighbors, node_idx_distances = ball_tree_result
@@ -514,8 +541,13 @@ class SpatialInfomap:
         if self._verbose:
             print("Creating network and clustering with Infomap...")
         self._stat_labels = utils.label_network(
-            node_idx_neighbors, node_idx_distances, self._counts, self._weight_exponent,
-            self._label_singleton, self._distance_metric, self._verbose
+            node_idx_neighbors,
+            node_idx_distances,
+            self._counts,
+            self._weight_exponent,
+            self._label_singleton,
+            self._distance_metric,
+            self._verbose,
         )
 
         # (4) Reverse the downsampling in step (2)
@@ -526,22 +558,27 @@ class SpatialInfomap:
         return self._labels
 
     def _hyperparam_assertions(self):
-        assert self._r2 > 0, \
-            "`r2` must be > 0"
-        assert type(self._label_singleton) is bool, \
-            "`label_singleton` either `True` or `False`"
-        assert 0 <= self._min_spacial_resolution <= 1, \
-            "`min_spacial_resolution` must be within [0, 1]"
-        assert self._distance_metric in ['euclidean', 'haversine'], \
-            "`distance_metric` should be either 'euclidean' or 'haversine'"
+        assert self._r2 > 0, "`r2` must be > 0"
+        assert (
+            type(self._label_singleton) is bool
+        ), "`label_singleton` either `True` or `False`"
+        assert (
+            0 <= self._min_spacial_resolution <= 1
+        ), "`min_spacial_resolution` must be within [0, 1]"
+        assert self._distance_metric in [
+            "euclidean",
+            "haversine",
+        ], "`distance_metric` should be either 'euclidean' or 'haversine'"
 
     def _data_assertions(self, data):
-        assert not np.any(np.isnan(data)), \
-            f"There are {np.isnan(np.vstack(data))} NaN values in the input data."
-        assert data.shape[1] == 2, \
-            "Number of columns must be 2"
-        if self._distance_metric == 'haversine':
-            assert (np.min(data[:, 0]) > -90 and np.max(data[:, 0]) < 90), \
-                "Latitude (column 0) must have values between -90 and 90"
-            assert (np.min(data[:, 1]) > -180 and np.max(data[:, 1]) < 180), \
-                "Longitude (column 1) must have values between -180 and 180"
+        assert not np.any(
+            np.isnan(data)
+        ), f"There are {np.isnan(np.vstack(data))} NaN values in the input data."
+        assert data.shape[1] == 2, "Number of columns must be 2"
+        if self._distance_metric == "haversine":
+            assert (
+                np.min(data[:, 0]) > -90 and np.max(data[:, 0]) < 90
+            ), "Latitude (column 0) must have values between -90 and 90"
+            assert (
+                np.min(data[:, 1]) > -180 and np.max(data[:, 1]) < 180
+            ), "Longitude (column 1) must have values between -180 and 180"
