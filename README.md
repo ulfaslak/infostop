@@ -111,6 +111,10 @@ If your update should trigger a version increment and package rerelease, please 
 ```Bash
 (env) $ git tag -a v1.0.11 -m "Infostop version 1.0.11"
 ```
+Finally, push first the tags and then your commits.
+```Bash
+(env) $ git push --tags && git push
+```
 When mergining a PR with a tagged commit, the PyPI deployment action is triggered, and the new version of Infostop becomes publicly available shortly thereafter.
 
 
