@@ -6,7 +6,7 @@ env:  ## Create and active virtualenv
 
 coverage:  ## Run tests with coverage
 	coverage erase
-	coverage run --include=polynest/* -m pytest -ra
+	coverage run --include=infostop/* -m pytest -ra
 	coverage report -m
 	coverage html
 
@@ -20,7 +20,7 @@ test:  ## Run tests
 	pytest -ra
 
 pipinstall:  ## Pip install package
-	env/bin/pip install ../polynest
+	env/bin/pip install ../infostop
 
 install:  ## setup.py install package
 	make clean
@@ -38,8 +38,8 @@ clean:  ## Clean compiled program
 	-rm -rf ./build/
 	-rm -rf ./dist/
 	-rm -rf ./var/
-	-rm -rf ./env/lib/python3.8/site-packages/polynest*
-	-rm -rf ./polynest/__pycache__/
+	-rm -rf ./env/lib/python3.8/site-packages/infostop*
+	-rm -rf ./infostop/__pycache__/
 	-rm -rf ./tests/__pycache__/
 
 help: ## Show help message
