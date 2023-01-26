@@ -1,0 +1,66 @@
+cff-version: 1.2.0
+title: Infostop
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Ulf
+    family-names: Aslak
+    email: ulfaslak@gmail.com
+  - given-names: Laura
+    family-names: Alessandretti
+    email: lauale@dtu.dk
+    affiliation: Technical University of Denmark
+identifiers:
+  - type: doi
+    value: 10.48550/arXiv.2003.14370
+repository-code: 'https://github.com/ulfaslak/infostop'
+abstract: >-
+  Data-driven research in mobility has prospered in recent
+  years, providing solutions to real-world challenges
+  including forecasting epidemics and planning
+  transportation. These advancements were facilitated by
+  computational tools enabling the analysis of large-scale
+  data-sets of digital traces. One of the challenges when
+  pre-processing spatial trajectories is the so-called stop
+  location detection, that entails the reduction of raw time
+  series to sequences of destinations where an individual
+  was stationary. The most widely adopted solution to this
+  problem was proposed by Hariharan and Toyama (2004) and
+  involves filtering out non-stationary measurements, then
+  applying agglomerative clustering on the stationary
+  points. This state-of-the-art solution, however, suffers
+  of two limitations: (i) frequently visited places located
+  very close (such as adjacent buildings) are likely to be
+  merged into a unique location, due to inherent measurement
+  noise, (ii) traces for multiple users can not be analysed
+  simultaneously, thus the definition of destination is not
+  shared across users. In this paper, we describe the
+  Infostop algorithm that overcomes the limitations of the
+  state-of-the-art solution by leveraging the flow-based
+  network community detection algorithm Infomap. We test
+  Infostop for a population of ∼1000 individuals with highly
+  overlapping mobility. We show that the size of locations
+  detected by Infostop saturates for increasing number of
+  users and that time complexity grows slower than for
+  previous solutions. We demonstrate that Infostop can be
+  used to easily infer social meetings. Finally, we provide
+  an open-source implementation of Infostop, written in
+  Python and C++, that has a simple API and can be used both
+  for labeling time-ordered coordinate sequences (GPS or
+  otherwise), and unordered sets of spatial points.
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Aslak"
+    given-names: "Ulf"
+    orcid: "https://orcid.org/0000-0003-4704-3609"
+  - family-names: "Alessandretti"
+    given-names: "Laura"
+    orcid: "https://orcid.org/0000-0001-6003-1165"
+  journal: "arXiv preprint"
+  doi: 10.48550/arXiv.2003.14370
+  title: "Infostop: scalable stop-location detection in multi-user mobility data"
+  year: 2020
+  arxiv: "2003.14370"
