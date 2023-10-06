@@ -114,7 +114,7 @@ setup(
     setup_requires=["pybind11>=2.4"],
     install_requires=[
         "pybind11>=2.4",
-        "infomap==1.0.6",
+        "infomap>=1.0.6,<3",
         "folium>=0.7.0",
         "numpy",
         "tqdm",
