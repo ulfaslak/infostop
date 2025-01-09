@@ -2,35 +2,39 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <iostream>
-#include <cmath> 
+#include <cmath>
 #include <algorithm>
 #include <limits>
 #include <vector>
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 
 namespace py = pybind11;
 
 // ----------------
 // Regular C++ code
 // ----------------
-	
+
 static double haversine(double lat1, double lon1, double lat2, double lon2)
-{ 
+{
 	// source: https://bit.ly/2S0OdUs
-	// distance between latitudes 
-	// and longitudes 
-	double dLat = (lat2 - lat1) * M_PI / 180.0; 
-	double dLon = (lon2 - lon1) * M_PI / 180.0; 
+	// distance between latitudes
+	// and longitudes
+	double dLat = (lat2 - lat1) * M_PI / 180.0;
+	double dLon = (lon2 - lon1) * M_PI / 180.0;
 
-	// convert to radians 
-	lat1 = (lat1) * M_PI / 180.0; 
-	lat2 = (lat2) * M_PI / 180.0; 
+	// convert to radians
+	lat1 = (lat1) * M_PI / 180.0;
+	lat2 = (lat2) * M_PI / 180.0;
 
-	// apply formulae 
-	double a = pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1) * cos(lat2); 
-	double rad = 6371000; 
-	double c = 2 * asin(sqrt(a)); 
-	return rad * c; 
-} 
+	// apply formulae
+	double a = pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1) * cos(lat2);
+	double rad = 6371000;
+	double c = 2 * asin(sqrt(a));
+	return rad * c;
+}
 
 static double euclidean(double x1, double y1, double x2, double y2)
 {
@@ -56,13 +60,13 @@ void insert_ordered(std::vector<double>& arr, double elem)
 {
 	// add space
     arr.push_back(elem);
-    
+
     // find the position for the element
     auto pos = std::upper_bound(arr.begin(), arr.end()-1, elem);
-    
+
     // and move the array around it:
     std::move_backward(pos, arr.end()-1, arr.end());
-    
+
     // and set the new element:
     *pos = elem;
 };
@@ -90,7 +94,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 	std::vector<int> event_map(N);                 // event_map   (py: list)
 
 	// Intermediate variables
-	std::vector<double> stop_points_lat;  
+	std::vector<double> stop_points_lat;
 	std::vector<double> stop_points_lon;
 	double ddist;
 	double dtime;
@@ -107,7 +111,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 	{
 		distance_function = &euclidean;
 	}
-	
+
 	if (M == 2)
 	{
 
@@ -133,10 +137,10 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 				insert_ordered(stop_points_lat, coords(i, 0));
 				insert_ordered(stop_points_lon, coords(i, 1));
 			} else
-			{	
+			{
 				// test if there are enough points in the stop
 				if (i - i0 >= min_size)
-				{	
+				{
 					// add previous group median to `stat_coords`,
 					stat_coords.push_back(
 						{ median(stop_points_lat), median(stop_points_lon) }
@@ -210,10 +214,10 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 				insert_ordered(stop_points_lat, coords(i, 0));
 				insert_ordered(stop_points_lon, coords(i, 1));
 			} else
-			{	
+			{
 				// test if there are enough points in the stop and the stop lasts long enough
 				if (i - i0 >= min_size && coords(i-1, 2) - coords(i0, 2) >= min_staying_time)
-				{	
+				{
 					// add previous group median to `stat_coords`,
 					stat_coords.push_back(
 						{ median(stop_points_lat), median(stop_points_lon) }
@@ -252,7 +256,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 
 		// append the last group
 		if (N - i0 >= min_size && coords(N-1, 2) - coords(i0, 2) >= min_staying_time)
-		{	
+		{
 			stat_coords.push_back({ median(stop_points_lat), median(stop_points_lon) });
 			for (size_t idx = i0; idx < N; idx++)
 				event_map[idx] = j;
@@ -262,7 +266,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 				event_map[idx] = outlier;
 		}
 	}
-	
+
 	return std::make_tuple(stat_coords, event_map);
 }
 
@@ -286,7 +290,7 @@ PYBIND11_MODULE(cpputils, m)
         Group temporally adjacent points if they are closer than r_C,
         then save their median (`stat_coords`) and store the median
         index in vector that maps it to `coords` indices.
-    
+
 	    Parameters
 	    ----------
 	        coords : array-like (shape=(N, 2) or shape=(N,3))
@@ -295,7 +299,7 @@ PYBIND11_MODULE(cpputils, m)
 	        min_staying_time : int
 	        max_staying_time : int
 	        distance_metric : str
-	    
+
 	    Returns
 	    -------
 	        groups : list-of-list
