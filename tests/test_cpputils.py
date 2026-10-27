@@ -45,21 +45,16 @@ def events(
 
 @pytest.mark.parametrize("n_cols", [2, 3])
 def test_zero_points(n_cols):
-    # Correct output, but only by luck: the C++ code still reads row 0 (#48).
     assert events(np.empty((0, n_cols))) == ([], [])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="reads rows 0 and -1 of an empty input (out of bounds); "
-    "https://github.com/ulfaslak/infostop/issues/48",
-)
 @pytest.mark.parametrize("n_cols", [2, 3])
-def test_zero_points_reads_nothing(n_cols):
-    # A zero-row view into the middle of a larger array, so the out-of-bounds reads
-    # hit valid memory and show up as a stop event made from rows not in the input.
-    # With 3 columns the last-group check also reads row -1 (time 1000).
+def test_zero_points_invents_no_event(n_cols):
+    # A zero-row view into the middle of a larger array, so an out-of-bounds read
+    # would hit valid memory and show up as a stop event made from rows that are not
+    # in the input: row 0 starts the first group, and with 3 columns the last-group
+    # check reads row -1 (time 1000). `min_size=0` lets such a group through. This
+    # only catches reads that change the output (#48).
     parent = np.array([[9.0, 9.0, 1000.0], [1.0, 2.0, 0.0], [3.0, 4.0, 0.0]])
     empty = as_strided(parent[1:, :n_cols], shape=(0, n_cols))
     assert events(empty, min_size=0) == ([], [])
