@@ -147,7 +147,7 @@ def plot_map(
 ):
     """Load Folium map to display the data and fit.
 
-    Note: `plot_map` only works if `distance_metric` is "havesine".
+    Note: `plot_map` only works if `distance_metric` is "haversine".
 
     Parameters
     ----------
@@ -192,15 +192,16 @@ def plot_map(
 
     Returns
     -------
-        folmap : folium.folium.Map
+        folmap : FoliumMap
+            The folium map is `folmap.m`.
 
     Example
     -------
         >>> # create model and fit it to data
         >>> model = Infostop()
-        >>> _ = model._fit_predict(traces)
+        >>> _ = model.fit_predict(traces)
         >>> # visualize result
-        >>> folmap = visualize.plot_map(model)
+        >>> folmap = plot_map(model)
         >>> folmap.m
     """
     assert hasattr(
@@ -223,7 +224,7 @@ def plot_map(
     else:
         # If it's an instance of Infostop
         if hasattr(model, "_r1"):
-            coords = np.vstack(model._data)[:, :2]
+            coords = np.vstack([coords_u[:, :2] for coords_u in model._data])
             coord_labels = np.hstack(model.labels)
 
         # If it's an instance of SpatialInfomap
