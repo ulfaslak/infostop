@@ -52,26 +52,42 @@ def test_visits_merged_by_rounding_get_a_label(min_spacial_resolution):
     assert sorted(model._counts.tolist()) == [1, 2]
 
 
+PARK = (55.72, 12.48)
+
+
 def test_visits_with_identical_medians_get_a_label():
-    # A device that reports the same rounded coordinates throughout a stay gives
-    # identical medians for every visit, without any `min_spacial_resolution`.
-    # The gym is visited twice with medians a few metres apart: an Infomap module.
-    trace, rows = make_trace(
-        1, [HOME, GYM, HOME, WORK, GYM], [30, 20, 25, 30, 20], noise=0
-    )
-    gym_noise = np.random.default_rng(2).normal(0, 2e-5, (40, 2))
-    gym_rows = np.r_[rows[1], rows[4]]
-    trace[gym_rows, :2] += gym_noise
+    # A device that reports the same coordinates throughout a stay gives identical
+    # medians for every visit, without any `min_spacial_resolution`. Home and gym
+    # are visited twice that way. The park is visited twice with medians a few
+    # metres apart: an Infomap module. Work is visited once.
+    places = [HOME, GYM, PARK, HOME, WORK, GYM, PARK]
+    trace, rows = make_trace(1, places, [30, 20, 25, 25, 30, 20, 25], noise=0)
+    park_rows = np.r_[rows[2], rows[6]]
+    trace[park_rows, :2] += np.random.default_rng(2).normal(0, 2e-5, (50, 2))
 
     model = Infostop(label_singleton=False)
     labels = model.fit_predict(trace)
 
+    assert sorted(model._counts.tolist()) == [1, 1, 1, 2, 2]  # home and gym
+    home = labels_at(labels, rows[0]) | labels_at(labels, rows[3])
+    gym = labels_at(labels, rows[1]) | labels_at(labels, rows[5])
+    park = labels_at(labels, rows[2]) | labels_at(labels, rows[6])
+    for place in (home, gym, park):
+        assert len(place) == 1 and -1 not in place
+    assert len(home | gym | park) == 3  # three different stop locations
+    assert labels_at(labels, rows[4]) == {-1}  # work is visited once
+
+
+@pytest.mark.parametrize("min_spacial_resolution", [0, 1e-4])
+def test_label_singleton_true_labels_single_visits(min_spacial_resolution):
+    trace, rows = make_trace(0, [HOME, WORK, HOME], [30, 30, 30])
+    labels = Infostop(
+        label_singleton=True, min_spacial_resolution=min_spacial_resolution
+    ).fit_predict(trace)
     home = labels_at(labels, rows[0]) | labels_at(labels, rows[2])
-    gym = labels_at(labels, rows[1]) | labels_at(labels, rows[4])
-    assert len(home) == 1 and -1 not in home
-    assert len(gym) == 1 and -1 not in gym
-    assert home != gym
-    assert labels_at(labels, rows[3]) == {-1}  # work is visited once
+    work = labels_at(labels, rows[1])
+    assert len(home) == 1 and len(work) == 1
+    assert -1 not in home | work and home != work
 
 
 def test_spatial_infomap_points_merged_by_rounding_get_a_label():
