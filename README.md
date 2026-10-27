@@ -65,6 +65,10 @@ Plotting this onto a map:
 ## Installation
 `pip install infostop`
 
+**macOS without Infomap wheels** (Intel Macs, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, which needs OpenMP. Run `brew install libomp` first, or install with `OPENMP=0 pip install infostop` to build Infomap without OpenMP.
+
+**Reproducing earlier results.** Labels for points in ambiguous places, such as stops that lie close together, can differ between Infomap versions and between operating systems. Points labeled `-1` do not change. To reproduce earlier results, pin both `infostop` and `infomap` and use the same operating system. infostop 0.1.9 used `infomap==1.0.6`.
+
 ## Development notes
 We welcome contributions. Before you get started, you may want to read the notes below.
 
