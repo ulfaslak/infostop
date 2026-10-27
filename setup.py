@@ -119,6 +119,7 @@ setup(
         "numpy",
         "tqdm",
         "scikit-learn",
+        "scipy>=1.8",
     ],
     cmdclass={"build_ext": BuildExt},
     zip_safe=False,

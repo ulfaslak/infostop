@@ -4,3 +4,4 @@ folium>=0.7.0
 numpy
 tqdm
 scikit-learn
+scipy>=1.8
