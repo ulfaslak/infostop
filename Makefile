@@ -1,8 +1,8 @@
 .DEFAULT_GOAL := help
-.PHONY: coverage deps lint push test tox help install clean
+.PHONY: env coverage deps test install build clean help
 
-env:  ## Create and active virtualenv
-	python -m venv env
+env:  ## Create a virtualenv in ./env
+	python3 -m venv env
 
 coverage:  ## Run tests with coverage
 	coverage erase
@@ -15,19 +15,18 @@ deps:  ## Install dependencies
 	pip install black coverage pytest build
 	if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-test:  ## Run tests
-	which pytest
-	pytest -ra
+test:  ## Run tests against the installed package, like CI (run make install first)
+	@tmp=$$(mktemp -d) && cp -R tests "$$tmp/" && cd "$$tmp" && \
+		python -c "import infostop; print('Testing', infostop.__file__)" && \
+		python -m pytest -ra tests; \
+		status=$$?; rm -rf "$$tmp"; exit $$status
 
-pipinstall:  ## Pip install package
-	env/bin/pip install ../infostop
-
-install:  ## setup.py install package
-	make clean
-	python setup.py install
+install:  ## Build and install the package, replacing any earlier install
+	$(MAKE) clean
+	pip install .
 
 build:  ## Build package to dist/
-	make clean
+	$(MAKE) clean
 	python -m build --sdist --wheel --outdir dist/
 
 clean:  ## Clean compiled program
@@ -38,7 +37,6 @@ clean:  ## Clean compiled program
 	-rm -rf ./build/
 	-rm -rf ./dist/
 	-rm -rf ./var/
-	-rm -rf ./env/lib/python3.8/site-packages/infostop*
 	-rm -rf ./infostop/__pycache__/
 	-rm -rf ./tests/__pycache__/
 

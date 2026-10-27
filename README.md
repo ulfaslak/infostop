@@ -75,6 +75,12 @@ We welcome contributions. Before you get started, you may want to read the notes
 You should **create a virtual environment**. In your local `infostop` folder, do:
 ```Bash
 $ make env
+$ source env/bin/activate
+```
+
+**Install the development tools** (`pytest`, `black`, `coverage`, `build`) and the dependencies:
+```Bash
+(env) $ make deps
 ```
 
 **Install `infostop`** into your virtual environment.
@@ -82,12 +88,13 @@ Do this by running:
 ```Bash
 (env) $ make install
 ```
-This command will also delete any pre-existing installation of Infostop, so you will probably want to run it after each code update.
+This command builds the package and replaces any pre-existing installation of Infostop, so you will probably want to run it after each code update.
 
 **Run tests**:
 ```Bash
 (env) $ make test
 ```
+Like CI, this runs the tests from a temporary folder against the installed package (not the source folder), so run `make install` first.
 
 **Check test coverage**:
 ```Bash
@@ -122,5 +129,5 @@ Finally, push first the tags and then your commits.
 When mergining a PR with a tagged commit, the PyPI deployment action is triggered, and the new version of Infostop becomes publicly available shortly thereafter.
 
 
-[build-image]: https://github.com/ulfaslak/infostop/actions/workflows/deploy.yml/badge.svg
-[build-url]: https://github.com/ulfaslak/infostop/actions/workflows/deploy.yml
+[build-image]: https://github.com/ulfaslak/infostop/actions/workflows/ci.yml/badge.svg
+[build-url]: https://github.com/ulfaslak/infostop/actions/workflows/ci.yml
