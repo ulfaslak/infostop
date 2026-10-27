@@ -11,6 +11,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     not os.path.exists(os.path.join(ROOT, "setup.py")), reason="needs the source tree"
 )
 def test_packages_only_infostop_and_cpputils(tmp_path):
+    pytest.importorskip("setuptools")
     # Write fresh metadata from `setup.py` into `tmp_path` and read the top-level
     # names a wheel would install. Installed or leftover metadata cannot interfere.
     subprocess.run(
