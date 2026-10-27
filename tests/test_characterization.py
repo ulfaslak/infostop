@@ -151,6 +151,25 @@ def test_infostop_single_user(metric, with_time, expected):
     assert partition(labels) == expected
 
 
+@pytest.mark.parametrize(
+    "first_longitude, middle_longitude",
+    [(179.99999, -179.99999), (-179.99999, 179.99999)],
+    ids=["east-first", "west-first"],
+)
+def test_infostop_repeated_antimeridian_visits_share_one_label(
+    first_longitude, middle_longitude
+):
+    longitudes = (
+        [first_longitude] * 20 + [middle_longitude] * 20 + [first_longitude] * 20
+    )
+    trace = np.column_stack([np.full(60, 10.0), longitudes, 60.0 * np.arange(60)])
+
+    labels = Infostop().fit_predict(trace)
+
+    assert labels[0] >= 0
+    assert np.all(labels == labels[0])
+
+
 @pytest.mark.parametrize("metric", ["haversine", "euclidean"])
 @pytest.mark.parametrize("with_time", [True, False])
 def test_infostop_multi_user(metric, with_time):

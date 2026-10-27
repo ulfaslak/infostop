@@ -3,7 +3,8 @@
 `get_stationary_events(coords, r_C, min_size, min_staying_time, max_staying_time,
 distance_metric)` walks the points in order. A point joins the current group if it
 is within `r_C` (`<=`) of the group's coordinate-wise median and, with a time
-column, at most `max_staying_time` (`<=`) after the previous point. A finished
+column, at most `max_staying_time` (`<=`) after the previous point. Haversine
+groups use a circular median for longitude. A finished
 group is a stop event if it has at least `min_size` points and, with a time
 column, lasts at least `min_staying_time` from first to last point.
 
@@ -134,6 +135,44 @@ def test_haversine_r1_in_metres(metres, joined):
     stat_coords, event_map = events(coords, metric="haversine")
     assert event_map == ([0, 0] if joined else [-1, -1])
     assert len(stat_coords) == int(joined)
+
+
+@pytest.mark.parametrize(
+    "longitudes",
+    [
+        [179.99999, -179.99999, 179.99999, -179.99999],
+        [-179.99999, 179.99999, -179.99999, 179.99999],
+    ],
+    ids=["east-first", "west-first"],
+)
+@pytest.mark.parametrize("with_time", [False, True], ids=["without-time", "with-time"])
+def test_haversine_median_wraps_across_the_antimeridian(longitudes, with_time):
+    coords = np.array([[10.0, lon] for lon in longitudes])
+    if with_time:
+        coords = np.column_stack((coords, [0, 60, 120, 180]))
+
+    stat_coords, event_map = events(
+        coords,
+        r1=10,
+        min_size=2,
+        min_staying_time=60,
+        max_time_between=86400,
+        metric="haversine",
+    )
+
+    assert event_map == [0, 0, 0, 0]
+    assert len(stat_coords) == 1
+    assert stat_coords[0][0] == pytest.approx(10.0)
+    assert abs(abs(stat_coords[0][1]) - 180.0) < 1e-4
+
+
+def test_haversine_median_preserves_non_wrapped_longitudes():
+    coords = [[10.0, 12.5 + i * 1e-5] for i in range(4)]
+    stat_coords, event_map = events(coords, r1=10, metric="haversine")
+
+    assert event_map == [0, 0, 0, 0]
+    assert stat_coords[0][0] == pytest.approx(10.0)
+    assert stat_coords[0][1] == pytest.approx(12.500015)
 
 
 @pytest.mark.parametrize("gap, joined", [(600, True), (601, False)])

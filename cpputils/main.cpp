@@ -56,6 +56,58 @@ double median(std::vector<double> &values)
 	return 0.5 * (values[i0] + values[i1]);
 }
 
+double normalize_longitude_360(double longitude)
+{
+	longitude = std::fmod(longitude, 360.0);
+	if (longitude < 0.0)
+	{
+		longitude += 360.0;
+	}
+	return longitude;
+}
+
+double median_longitude(std::vector<double> &values)
+{
+	// Haversine longitudes are kept sorted in [0, 360).
+	// Unwrap at the largest gap so a group near the antimeridian stays contiguous.
+	double largest_gap = values.front() + 360.0 - values.back();
+	size_t gap_end = values.size() - 1;
+	for (size_t i = 0; i + 1 < values.size(); i++)
+	{
+		double gap = values[i + 1] - values[i];
+		if (gap > largest_gap)
+		{
+			largest_gap = gap;
+			gap_end = i;
+		}
+	}
+
+	const size_t start = (gap_end + 1) % values.size();
+	std::vector<double> unwrapped;
+	unwrapped.reserve(values.size());
+	for (size_t offset = 0; offset < values.size(); offset++)
+	{
+		size_t index = (start + offset) % values.size();
+		double longitude = values[index];
+		if (index < start)
+		{
+			longitude += 360.0;
+		}
+		unwrapped.push_back(longitude);
+	}
+
+	double result = std::fmod(median(unwrapped), 360.0);
+	if (result > 180.0)
+	{
+		result -= 360.0;
+	}
+	else if (result < -180.0)
+	{
+		result += 360.0;
+	}
+	return result;
+}
+
 void insert_ordered(std::vector<double>& arr, double elem)
 {
 	// add space
@@ -104,9 +156,12 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 
 	// Prepare distance function
 	double (* distance_function)(double, double, double, double);
-	if (distance_metric == "haversine")
+	double (* longitude_median_function)(std::vector<double>&) = &median;
+	const bool is_haversine = distance_metric == "haversine";
+	if (is_haversine)
 	{
 		distance_function = &haversine;
+		longitude_median_function = &median_longitude;
 	} else if (distance_metric == "euclidean")
 	{
 		distance_function = &euclidean;
@@ -120,22 +175,33 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 
 		// Set current group
 		stop_points_lat = { coords(0, 0) };
-		stop_points_lon = { coords(0, 1) };
+		double first_longitude = coords(0, 1);
+		if (is_haversine)
+		{
+			first_longitude = normalize_longitude_360(first_longitude);
+		}
+		stop_points_lon = { first_longitude };
 
 		// Loop over points
 		for (size_t i = 1; i < N; i++)
 		{
+			double longitude = coords(i, 1);
+			if (is_haversine)
+			{
+				longitude = normalize_longitude_360(longitude);
+			}
+
 			// compute distance to median of previous group
 			ddist = distance_function(
 				coords(i, 0), coords(i, 1),
-				median(stop_points_lat), median(stop_points_lon)
+				median(stop_points_lat), longitude_median_function(stop_points_lon)
 			);
 
 			if (ddist <= r_C)
 			{
 				// append to current group
 				insert_ordered(stop_points_lat, coords(i, 0));
-				insert_ordered(stop_points_lon, coords(i, 1));
+				insert_ordered(stop_points_lon, longitude);
 			} else
 			{
 				// test if there are enough points in the stop
@@ -143,7 +209,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 				{
 					// add previous group median to `stat_coords`,
 					stat_coords.push_back(
-						{ median(stop_points_lat), median(stop_points_lon) }
+						{ median(stop_points_lat), longitude_median_function(stop_points_lon) }
 					);
 
 					// add indices to event_map
@@ -170,7 +236,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 
 				// and write current coordinates as new group
 				stop_points_lat = { coords(i, 0) };
-				stop_points_lon = { coords(i, 1) };
+				stop_points_lon = { longitude };
 
 				// reset i0 index
 				i0 = i;
@@ -179,7 +245,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 		// append the last group (compact version of what's inside the above for->else)
 		if (N - i0 >= min_size)
 		{
-			stat_coords.push_back({ median(stop_points_lat), median(stop_points_lon) });
+			stat_coords.push_back({ median(stop_points_lat), longitude_median_function(stop_points_lon) });
 			for (size_t idx = i0; idx < N; idx++)
 				event_map[idx] = j;
 		} else
@@ -196,15 +262,26 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 
 		// Set current group
 		stop_points_lat = { coords(0, 0) };
-		stop_points_lon = { coords(0, 1) };
+		double first_longitude = coords(0, 1);
+		if (is_haversine)
+		{
+			first_longitude = normalize_longitude_360(first_longitude);
+		}
+		stop_points_lon = { first_longitude };
 
 		// Loop over points
 		for (size_t i = 1; i < N; i++)
 		{
+			double longitude = coords(i, 1);
+			if (is_haversine)
+			{
+				longitude = normalize_longitude_360(longitude);
+			}
+
 			// compute distance to median of previous group
 			ddist = distance_function(
 				coords(i, 0), coords(i, 1),
-				median(stop_points_lat), median(stop_points_lon)
+				median(stop_points_lat), longitude_median_function(stop_points_lon)
 			);
 			dtime = coords(i, 2) - coords(i-1, 2);
 
@@ -212,7 +289,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 			{
 				// append to current group
 				insert_ordered(stop_points_lat, coords(i, 0));
-				insert_ordered(stop_points_lon, coords(i, 1));
+				insert_ordered(stop_points_lon, longitude);
 			} else
 			{
 				// test if there are enough points in the stop and the stop lasts long enough
@@ -220,7 +297,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 				{
 					// add previous group median to `stat_coords`,
 					stat_coords.push_back(
-						{ median(stop_points_lat), median(stop_points_lon) }
+						{ median(stop_points_lat), longitude_median_function(stop_points_lon) }
 					);
 
 					// add indices to event_map
@@ -247,7 +324,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 
 				// and write current coordinates as new group
 				stop_points_lat = { coords(i, 0) };
-				stop_points_lon = { coords(i, 1) };
+				stop_points_lon = { longitude };
 
 				// reset i0 index
 				i0 = i;
@@ -257,7 +334,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 		// append the last group
 		if (N - i0 >= min_size && coords(N-1, 2) - coords(i0, 2) >= min_staying_time)
 		{
-			stat_coords.push_back({ median(stop_points_lat), median(stop_points_lon) });
+			stat_coords.push_back({ median(stop_points_lat), longitude_median_function(stop_points_lon) });
 			for (size_t idx = i0; idx < N; idx++)
 				event_map[idx] = j;
 		} else
