@@ -1,3 +1,5 @@
+import re
+
 import folium
 import numpy as np
 import pytest
@@ -239,16 +241,22 @@ def test_plot_map_with_nothing_to_show(case):
 def test_plot_map_keeps_the_tile_attribution():
     model, _, _ = _fitted("infostop")
     html = plot_map(model).m.get_root().render()
+    assert "openstreetmap.org/copyright" in html
     assert "Infostop" not in html
-    # folium < 0.9 does not show the attribution of named tiles at all
-    if tuple(int(v) for v in folium.__version__.split(".")[:2]) >= (0, 9):
-        assert "openstreetmap.org/copyright" in html
 
 
 def test_plot_map_with_custom_tile_url():
     # folium requires an attribution for a custom tile URL
     model, _, _ = _fitted("infostop")
     tiles = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-    html = plot_map(model, tiles=tiles).m.get_root().render()
+    folmap = plot_map(model, tiles=tiles, zoom_start=15)
+    html = folmap.m.get_root().render()
     assert tiles in html
-    assert "Infostop" in html
+    assert re.search(r"\bzoom\"?: 15\b", html)
+    assert np.allclose(folmap.m.location, np.median(folmap.points, axis=0))
+
+
+def test_plot_map_with_unknown_tiles():
+    model, _, _ = _fitted("infostop")
+    with pytest.raises(ValueError):
+        plot_map(model, tiles="OpenStreetMapp")
