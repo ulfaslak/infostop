@@ -1,7 +1,37 @@
+import inspect
+
 import folium
 from folium.plugins import HeatMap
 import numpy as np
 from infostop import utils
+
+
+def _mapbox_tiles(tiles, API_key):
+    """Return a Mapbox tile layer with `API_key`.
+
+    Newer folium has no Mapbox tiles of its own, so they come from `xyzservices`
+    (installed with folium >= 0.15). Return None if `tiles` does not name Mapbox, or
+    if `xyzservices` is not installed.
+    """
+    if not isinstance(tiles, str):
+        return None
+    try:
+        import xyzservices
+
+        provider = xyzservices.providers.query_name(tiles)
+    except (ImportError, ValueError):
+        return None
+    if provider.name != "MapBox":
+        return None
+    provider = provider(accessToken=API_key)
+    return folium.TileLayer(
+        tiles=provider.build_url(fill_subdomain=False, scale_factor="{r}"),
+        attr=provider.html_attribution,
+        name="mapbox",
+        # Mapbox serves 512 px tiles
+        tileSize=provider["tileSize"],
+        zoomOffset=provider["zoomOffset"],
+    )
 
 
 class FoliumMap:
@@ -43,13 +73,26 @@ class FoliumMap:
         self.labels = labels
         if location is None:
             location = tuple(np.median(points, axis=0))
-        self.m = folium.Map(
-            location=location,
-            zoom_start=zoom_start,
-            tiles=tiles,
-            API_key=API_key,
-            attr="Infostop",
-        )
+        map_kwargs = dict(location=location, zoom_start=zoom_start, tiles=tiles)
+        old_folium = "API_key" in inspect.signature(folium.Map).parameters
+        mapbox = None
+        if old_folium:
+            # folium 0.7 and 0.8 put the key in the URL of their own Mapbox tiles
+            map_kwargs["API_key"] = API_key
+        elif API_key:
+            mapbox = _mapbox_tiles(tiles, API_key)
+        if mapbox is not None:
+            # Newer folium has no Mapbox tiles of its own
+            map_kwargs["tiles"] = None
+        elif isinstance(tiles, str) and "{" in tiles:
+            # folium requires an attribution for a custom tile URL
+            map_kwargs["attr"] = "Infostop"
+        elif isinstance(tiles, str) and old_folium:
+            # folium < 0.9 shows the attribution of named tiles only if it is passed
+            map_kwargs["attr"] = folium.TileLayer(tiles=tiles, API_key=API_key).attr
+        self.m = folium.Map(**map_kwargs)
+        if mapbox is not None:
+            mapbox.add_to(self.m)
 
     def render_polygons(self, color="#ee9999", opacity=0.3):
         """Render convex hulls of points in each label-group.
@@ -106,7 +149,7 @@ class FoliumMap:
                 Sampling rate of scattered points. For example, using 0.2 shows only 20 percent
                 of the data.
         """
-        p = self.points
+        p = np.asarray(self.points)
         if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
@@ -114,8 +157,13 @@ class FoliumMap:
             p = p[mask]
 
         for d in p:
+            # Plain floats: some folium versions cannot take numpy values
             folium.CircleMarker(
-                d[:2], color=color, fill_color=color, fill_opacity=opacity, fill=True
+                d[:2].tolist(),
+                color=color,
+                fill_color=color,
+                fill_opacity=opacity,
+                fill=True,
             ).add_to(self.m)
 
     def render_heatmap(self, radius=8, subsampling=1):
@@ -130,13 +178,14 @@ class FoliumMap:
                 Sampling rate of points used for rendering the heatmap. For example, using 0.2
                 renders a heatmap based on only 20 percent of the data.
         """
-        p = self.points
+        p = np.asarray(self.points)
         if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
             )
             p = p[mask]
-        HeatMap(p, radius=radius).add_to(self.m)
+        # Plain floats: some folium versions cannot take numpy values
+        HeatMap(p.tolist(), radius=radius).add_to(self.m)
 
 
 def plot_map(

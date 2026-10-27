@@ -1,8 +1,12 @@
+import inspect
+import re
+
 import folium
 import numpy as np
 import pytest
 
-from infostop import Infostop, SpatialInfomap, plot_map
+from infostop import Infostop, SpatialInfomap, plot_map, visualize
+from infostop.visualize import FoliumMap
 
 DISPLAY_DATA = ["all", "all_stationary", "all_nonstationary", "unique_stationary"]
 
@@ -234,3 +238,98 @@ def test_plot_map_with_nothing_to_show(case):
             assert len(folmap.points) > 0, display_data
             center = np.median(folmap.points, axis=0)
         assert np.allclose(folmap.m.location, center, rtol=0, atol=1e-9), display_data
+
+
+def test_plot_map_keeps_the_tile_attribution():
+    model, _, _ = _fitted("infostop")
+    html = plot_map(model).m.get_root().render()
+    assert "openstreetmap.org/copyright" in html
+    assert "Infostop" not in html
+
+
+def test_plot_map_with_custom_tile_url():
+    # folium requires an attribution for a custom tile URL
+    model, _, _ = _fitted("infostop")
+    tiles = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    folmap = plot_map(model, tiles=tiles, zoom_start=15)
+    html = folmap.m.get_root().render()
+    assert tiles in html
+    assert re.search(r"\bzoom\"?: 15\b", html)
+    assert np.allclose(folmap.m.location, np.median(folmap.points, axis=0))
+
+
+def test_plot_map_with_unknown_tiles():
+    model, _, _ = _fitted("infostop")
+    with pytest.raises(ValueError):
+        plot_map(model, tiles="OpenStreetMapp")
+
+
+@pytest.mark.skipif(
+    "API_key" in inspect.signature(folium.Map).parameters,
+    reason="folium < 0.9 uses its own Mapbox tiles",
+)
+def test_plot_map_mapbox_api_key():
+    xyzservices = pytest.importorskip("xyzservices")
+    mapbox = xyzservices.providers.MapBox(accessToken="my-token")
+    model, _, _ = _fitted("infostop")
+    folmap = plot_map(model, tiles="Mapbox", API_key="my-token")
+    # The layer control shows the name of the tile layer
+    folium.LayerControl().add_to(folmap.m)
+    html = folmap.m.get_root().render()
+    tile_urls = re.findall(r"L\.tileLayer\(\s*[\"']([^\"']+)", html)
+    assert tile_urls == [mapbox.build_url(fill_subdomain=False, scale_factor="{r}")]
+    # The key is only in the tile URL
+    assert html.count("my-token") == 1
+    assert "mapbox.com/about/maps" in html and "openstreetmap.org/copyright" in html
+    assert re.search(r"\btileSize\"?: 512\b", html)
+    assert re.search(r"\bzoomOffset\"?: -1\b", html)
+
+
+@pytest.mark.parametrize("tiles", ["OpenStreetMap", "Mapbox"])
+@pytest.mark.parametrize("API_key", [None, ""])
+def test_plot_map_without_api_key(tiles, API_key):
+    # As before: no key is fine for OpenStreetMap, and an error for Mapbox
+    model, _, _ = _fitted("infostop")
+    if tiles == "Mapbox":
+        with pytest.raises(ValueError):
+            plot_map(model, tiles=tiles, API_key=API_key)
+    else:
+        assert isinstance(plot_map(model, tiles=tiles, API_key=API_key).m, folium.Map)
+
+
+def test_plot_map_api_key_unused_by_other_tiles():
+    # The key is not written into the page when the tiles do not need it
+    model, _, _ = _fitted("infostop")
+    html = plot_map(model, API_key="my-token").m.get_root().render()
+    assert "my-token" not in html
+
+
+def test_plot_map_passes_plain_floats_to_folium(monkeypatch):
+    # folium 0.12-0.13 cannot take a numpy array as a marker location, and folium
+    # 0.7-0.8 write numpy 2 floats into the page as `np.float64(...)`
+    passed = []
+    circle_marker, heatmap = folium.CircleMarker, visualize.HeatMap
+    monkeypatch.setattr(
+        folium,
+        "CircleMarker",
+        lambda location, **kw: passed.append(location) or circle_marker(location, **kw),
+    )
+    monkeypatch.setattr(
+        visualize,
+        "HeatMap",
+        lambda data, **kw: passed.extend(data) or heatmap(data, **kw),
+    )
+    model, _, _ = _fitted("infostop")
+    folmap = plot_map(model, display_data="all", scatter=True)
+    # First the markers, then the heatmap, each at the shown points
+    assert passed == 2 * folmap.points.tolist()
+    assert all(type(value) is float for location in passed for value in location)
+    assert "np.float64" not in folmap.m.get_root().render()
+
+
+def test_folium_map_with_points_as_a_list():
+    points = [[55.70, 12.50], [55.71, 12.52], [55.70, 12.51]]
+    folmap = FoliumMap(points, np.array([0, 1, 0]))
+    folmap.render_points(subsampling=0.5)
+    folmap.render_heatmap(subsampling=0.5)
+    assert "<html>" in folmap.m.get_root().render()

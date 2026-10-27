@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <limits>
 #include <set>
+#include <string>
 #include <vector>
 
 #ifndef M_PI
@@ -211,6 +212,21 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 	std::string distance_metric
 	)
 {
+	// Reject arguments that the algorithm below has no branch for
+	if (distance_metric != "haversine" && distance_metric != "euclidean")
+	{
+		throw py::value_error(
+			"distance_metric must be 'haversine' or 'euclidean', got '" + distance_metric + "'"
+		);
+	}
+	if (input.ndim() == 2 && input.shape(1) != 2 && input.shape(1) != 3)
+	{
+		throw py::value_error(
+			"coords must have 2 columns (lat, lon) or 3 columns (lat, lon, time), got "
+			+ std::to_string(input.shape(1))
+		);
+	}
+
 	auto coords = input.unchecked<2>();
 
 	// Get shape of data
@@ -221,6 +237,10 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 	// Output variables
 	std::vector<std::vector<double>> stat_coords;  // stat_coords (py: list of lists)
 	std::vector<int> event_map(N);                 // event_map   (py: list)
+
+	// An empty trace has no stop events (and no row 0 to start the first group from)
+	if (N == 0)
+		return std::make_tuple(stat_coords, event_map);
 
 	// Intermediate variables
 	std::vector<double> stop_points_lat;
