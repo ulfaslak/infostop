@@ -193,13 +193,55 @@ def test_infostop_weighted(metric, weight_exponent):
     assert partition(model.fit_predict(trace)) == SINGLE_WITH_TIME
 
 
-def test_infostop_min_spacial_resolution():
-    # Rounding to 1e-4 degrees collapses the visits to each location onto one
-    # point, so every node is a singleton and Infomap is not run at all.
-    trace = make_trace(1, SINGLE_VISITS)
-    labels = Infostop(min_spacial_resolution=1e-4).fit_predict(trace)
+# Four visits at x=0 and four at x=6, all within `r2` of each other, each followed
+# by a visit to D. Weighting links by `1 / distance ** weight_exponent` makes the
+# links within each spot stronger than the links across.
+CLOSE_VISITS = [v for x in (0, 6) * 4 for v in (((x, 0), 10), (D, 10))]
 
-    assert partition(labels) == SINGLE_WITH_TIME
+
+@pytest.mark.parametrize("metric", ["haversine", "euclidean"])
+@pytest.mark.parametrize(
+    "weighted, weight_exponent, split",
+    [(False, 1, False), (True, 1, False), (True, 2, True)],
+)
+def test_infostop_weighting_splits_close_spots(
+    metric, weighted, weight_exponent, split
+):
+    trace = make_trace(4, CLOSE_VISITS, metric)
+    model = Infostop(
+        distance_metric=metric, weighted=weighted, weight_exponent=weight_exponent
+    )
+    labels = model.fit_predict(trace)
+
+    # One visit to each spot, each with the walks to and from D.
+    x0, d, x6 = 0, 1, (2 if split else 0)
+    # fmt: off
+    visit_pair = [
+        (x0, 10), (-1, 9), (d, 10), (-1, 8),
+        (x6, 10), (-1, 8), (d, 10), (-1, 9),
+    ]
+    # fmt: on
+    assert partition(labels) == (visit_pair * 4)[:-1]
+
+
+# Three spots 15 m apart (more than `r2`), each visited twice with D in between.
+# All three lie inside one 0.001-degree grid cell, at least 10 m from its edges.
+GRID_SPOTS = [(-40, -10), (-25, -10), (-10, -10)]
+GRID_VISITS = [v for spot in GRID_SPOTS * 2 for v in ((spot, 10), (D, 10))]
+
+
+@pytest.mark.parametrize("resolution", [0, 1e-3])
+def test_infostop_min_spacial_resolution(resolution):
+    trace = make_trace(6, GRID_VISITS)
+    labels = Infostop(min_spacial_resolution=resolution).fit_predict(trace)
+
+    # Rounding to the grid puts the three spots on one point, so they share a label.
+    s1, d, s2, s3 = (0, 1, 2, 3) if resolution == 0 else (0, 1, 0, 0)
+
+    def visit(s):
+        return [(s, 10), (-1, 9), (d, 10), (-1, 9)]
+
+    assert partition(labels) == ((visit(s1) + visit(s2) + visit(s3)) * 2)[:-1]
 
 
 @pytest.mark.parametrize("metric", ["haversine", "euclidean"])
