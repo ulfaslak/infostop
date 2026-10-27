@@ -1,6 +1,10 @@
 import numpy as np
 from sklearn.neighbors import BallTree
-from scipy.spatial import QhullError
+
+try:
+    from scipy.spatial import QhullError
+except ImportError:  # SciPy < 1.8
+    from scipy.spatial.qhull import QhullError
 from infomap import Infomap
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
