@@ -33,39 +33,47 @@ def _move(rng, a, b, t0, n=10):
     )
 
 
-def _trace(rng):
-    """Home, work, home: 90 stationary points in 3 stop events, 20 moving points.
+def _trace(rng, first=HOME, second=WORK):
+    """First, second, first: 90 stationary points in 3 stop events, 20 moving points.
 
     The way back runs ~220 m north of the way out, so no two moving points are close.
     """
     north = (2e-3, 0)
     return np.vstack(
         [
-            _visit(rng, HOME, 0),
-            _move(rng, HOME, WORK, 2000),
-            _visit(rng, WORK, 4000),
-            _move(rng, np.add(WORK, north), np.add(HOME, north), 6000),
-            _visit(rng, HOME, 8000),
+            _visit(rng, first, 0),
+            _move(rng, first, second, 2000),
+            _visit(rng, second, 4000),
+            _move(rng, np.add(second, north), np.add(first, north), 6000),
+            _visit(rng, first, 8000),
         ]
     )
 
 
 def _fitted(kind):
+    """Return a fitted model, its input as a list of traces, and their labels."""
     rng = np.random.default_rng(0)
     if kind == "infostop":
-        model = Infostop()
-        model.fit_predict(_trace(rng))
+        model, data = Infostop(), [_trace(rng)]
     elif kind == "infostop_no_timestamps":
-        model = Infostop()
-        model.fit_predict(_trace(rng)[:, :2])
+        model, data = Infostop(), [_trace(rng)[:, :2]]
     elif kind == "infostop_multiuser":
-        model = Infostop()
-        model.fit_predict([_trace(rng), _trace(rng)])
+        model, data = Infostop(), [_trace(rng), _trace(rng, WORK, HOME)]
     elif kind == "spatial_infomap":
         # The moving points are singletons, which `label_singleton=False` labels -1
-        model = SpatialInfomap(label_singleton=False)
-        model.fit_predict(_trace(rng)[:, :2])
-    return model
+        model, data = SpatialInfomap(label_singleton=False), [_trace(rng)[:, :2]]
+    elif kind == "spatial_infomap_rounded":
+        # Fitted on rounded coordinates, so `_stat_coords` differ from the input
+        model = SpatialInfomap(
+            label_singleton=False, min_spacial_resolution=2e-5, r2=30
+        )
+        data = [_trace(rng)[:, :2]]
+    if kind.startswith("infostop"):
+        labels = model.fit_predict(data if len(data) > 1 else data[0])
+        labels = labels if len(data) > 1 else [labels]
+    else:
+        labels = [model.fit_predict(data[0])]
+    return model, data, labels
 
 
 # Number of points shown for each `display_data`
@@ -94,20 +102,27 @@ EXPECTED_COUNTS = {
         "all_nonstationary": 20,
         "unique_stationary": 90,
     },
+    "spatial_infomap_rounded": {
+        "all": 110,
+        "all_stationary": 90,
+        "all_nonstationary": 20,
+        "unique_stationary": 27,
+    },
 }
 
 
 @pytest.mark.parametrize("display_data", DISPLAY_DATA)
 @pytest.mark.parametrize("kind", list(EXPECTED_COUNTS))
 def test_plot_map_returns_folium_map(kind, display_data):
-    folmap = plot_map(_fitted(kind), display_data=display_data, scatter=True)
+    model, _, _ = _fitted(kind)
+    folmap = plot_map(model, display_data=display_data, scatter=True)
     assert isinstance(folmap.m, folium.Map)
     assert "<html>" in folmap.m.get_root().render()
 
 
 @pytest.mark.parametrize("kind", list(EXPECTED_COUNTS))
 def test_plot_map_display_data_selects_points(kind):
-    model = _fitted(kind)
+    model, _, _ = _fitted(kind)
     for display_data, count in EXPECTED_COUNTS[kind].items():
         folmap = plot_map(model, display_data=display_data)
         assert len(folmap.points) == len(folmap.labels) == count, display_data
@@ -118,24 +133,23 @@ def test_plot_map_display_data_selects_points(kind):
             assert np.all(folmap.labels >= 0), display_data
 
 
-def test_plot_map_display_data_points_match_input_labels():
-    rng = np.random.default_rng(0)
-    trace = _trace(rng)
-    model = Infostop()
-    labels = model.fit_predict(trace)
-    shown = {}
-    for display_data in ["all", "all_stationary", "all_nonstationary"]:
-        folmap = plot_map(model, display_data=display_data)
-        shown[display_data] = {
-            (lat, lon, label)
-            for (lat, lon), label in zip(folmap.points.tolist(), folmap.labels.tolist())
-        }
+@pytest.mark.parametrize("kind", list(EXPECTED_COUNTS))
+def test_plot_map_display_data_points_match_input_labels(kind):
+    model, data, labels = _fitted(kind)
     expected = {
-        (lat, lon, label) for (lat, lon), label in zip(trace[:, :2].tolist(), labels)
+        (lat, lon, label)
+        for data_u, labels_u in zip(data, labels)
+        for (lat, lon), label in zip(data_u[:, :2].tolist(), labels_u.tolist())
     }
-    assert shown["all"] == expected
-    assert shown["all_stationary"] == {p for p in expected if p[2] >= 0}
-    assert shown["all_nonstationary"] == {p for p in expected if p[2] == -1}
+    for display_data, keep in [
+        ("all", lambda label: True),
+        ("all_stationary", lambda label: label >= 0),
+        ("all_nonstationary", lambda label: label == -1),
+    ]:
+        folmap = plot_map(model, display_data=display_data)
+        shown = list(zip(*folmap.points.T.tolist(), folmap.labels.tolist()))
+        assert len(shown) == len(set(shown)), display_data
+        assert set(shown) == {p for p in expected if keep(p[2])}, display_data
 
 
 def test_plot_map_shows_a_point_once_for_every_label_it_has():
@@ -149,6 +163,11 @@ def test_plot_map_shows_a_point_once_for_every_label_it_has():
     labels = model.fit_predict(trace)
     assert labels[0] >= 0 and labels[-2] == -1
 
-    for display_data in ["all", "all_stationary", "all_nonstationary"]:
-        points = plot_map(model, display_data=display_data).points
-        assert np.any(np.all(points == trace[0, :2], axis=1)), display_data
+    for display_data, expected_labels in [
+        ("all", [-1, labels[0]]),
+        ("all_stationary", [labels[0]]),
+        ("all_nonstationary", [-1]),
+    ]:
+        folmap = plot_map(model, display_data=display_data)
+        at_point = np.all(folmap.points == trace[0, :2], axis=1)
+        assert sorted(folmap.labels[at_point]) == expected_labels, display_data
