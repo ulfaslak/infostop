@@ -149,8 +149,13 @@ class FoliumMap:
             p = p[mask]
 
         for d in p:
+            # Plain floats: some folium versions cannot take numpy values
             folium.CircleMarker(
-                d[:2], color=color, fill_color=color, fill_opacity=opacity, fill=True
+                d[:2].tolist(),
+                color=color,
+                fill_color=color,
+                fill_opacity=opacity,
+                fill=True,
             ).add_to(self.m)
 
     def render_heatmap(self, radius=8, subsampling=1):
@@ -171,7 +176,8 @@ class FoliumMap:
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
             )
             p = p[mask]
-        HeatMap(p, radius=radius).add_to(self.m)
+        # Plain floats: some folium versions cannot take numpy values
+        HeatMap(p.tolist(), radius=radius).add_to(self.m)
 
 
 def plot_map(
