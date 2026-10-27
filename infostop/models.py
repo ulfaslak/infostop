@@ -370,7 +370,7 @@ class Infostop:
     def _data_assertions(self, data):
         assert not np.any(
             np.isnan(np.vstack(data))
-        ), f"There are {np.isnan(np.vstack(data))} NaN values in the input data."
+        ), f"There are {np.isnan(np.vstack(data)).sum()} NaN values in the input data."
         for u, coords_u in enumerate(data):
             error_insert = "" if not self.multiuser else f"User {u}: "
             assert coords_u.shape[1] in [2, 3], (
@@ -577,7 +577,7 @@ class SpatialInfomap:
     def _data_assertions(self, data):
         assert not np.any(
             np.isnan(data)
-        ), f"There are {np.isnan(np.vstack(data))} NaN values in the input data."
+        ), f"There are {np.count_nonzero(np.isnan(data))} NaN values in the input data."
         assert data.shape[1] == 2, "Number of columns must be 2"
         if self._distance_metric == "haversine":
             assert (
