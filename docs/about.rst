@@ -1,82 +1,88 @@
-About this project
-==================
+About Infostop
+==============
 
-Infostop is a minimal and fast tool for performing network clustering on spacial data,
-and in particular it is well suited for detecting stop locations, or points of interest,
-in GPS data.
+Infostop detects stop locations in mobility data. It takes a time-ordered
+trace of coordinates (GPS or otherwise) and gives each point the label of the
+place where the person stayed, or ``-1`` if the point was recorded while the
+person was moving. It can also label the traces of many people at once. Then a
+place that several people visit gets the same label in each trace.
+
+The method is described in `Aslak & Alessandretti (2020)`_.
 
 Quick example
 -------------
 
-For unlabeled GPS trace `data`:
+Ten GPS fixes at home, three on the way to work, and ten at work:
 
-.. code:: python
+.. code-block:: pycon
 
-    >>> import infostop
-    >>> import numpy as np
-	>>> data 
-	array([[ 55.75259295,  12.34353885 ],
-	       [ 55.7525908 ,  12.34353145 ],
-	       [ 55.7525876 ,  12.3435386  ],
-	       ...,
-	       [ 63.40379175,  10.40477095 ],
-	       [ 63.4037841 ,  10.40480265 ],
-	       [ 63.403787  ,  10.4047871  ]])
-	>>> labels = infostop.label_trace(data)
-	>>> np.hstack([data, labels.reshape(-1, 1)])
-	array([[ 55.75259295,  12.34353885,   0.        ],
-	       [ 55.7525908 ,  12.34353145,   0.        ],
-	       [ 55.7525876 ,  12.3435386 ,  1-.        ],
-	       ...,
-	       [ 63.40379175,  10.40477095, 164.        ],
-	       [ 63.4037841 ,  10.40480265, 164.        ],
-	       [ 63.403787  ,  10.4047871 , 164.        ]])
+   >>> import numpy as np
+   >>> from infostop import Infostop
+   >>> rng = np.random.default_rng(0)
+   >>> home = [55.6761, 12.5683] + rng.normal(0, 1e-5, (10, 2))
+   >>> work = [55.6867, 12.5700] + rng.normal(0, 1e-5, (10, 2))
+   >>> trip = np.linspace([55.6761, 12.5683], [55.6867, 12.5700], 5)[1:-1]
+   >>> data = np.vstack([home, trip, work])
+   >>> Infostop().fit_predict(data)
+   array([ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1, -1, -1,  1,  1,  1,  1,
+           1,  1,  1,  1,  1,  1])
 
-The coordinates can now be plotted onto a map, colored by the assigned labels:
+The points at home get one label, the points at work get another, and the
+three points on the way get ``-1``. :doc:`usage/usage` explains the input
+format, the parameters and the other tools in the package.
+
+The figure shows points on a university campus, coloured by their stop
+location label:
 
 .. figure:: img/infostop_example_map.png
+   :alt: Points on a map of a university campus, coloured by stop location label.
 
-Why should I use Infostop
--------------------------
+How it works
+------------
 
-Pros
-~~~~
+1. **Downsample in time.** Infostop walks through each trace and groups
+   consecutive points that stay within ``r1`` of the median of their group.
+   A group with enough points (and, with timestamps, a long enough duration)
+   is a *stationary event*. Infostop keeps only the median of each event.
+   Points that are in no event get the label ``-1``.
+2. **Cluster in space.** Event medians that are within ``r2`` of each other
+   are linked in a network, and the `Infomap`_ algorithm clusters this network.
+   Each cluster is a stop location.
+3. **Label the input.** Each point gets the label of the stop location of its
+   event.
 
-- Quick Python based API for finding important places in your GPS data
-- Installable with pip, no compiling needed
-- No external program needed 
-- Cross-platform
-- More meaningful clustering solutions than DBSCAN (or similar) based methods
-
-Cons
-~~~~
-
-- Not as fast as DBSCAN based methods (although still relatively fast)
-- No plotting options yet
-
+Because the clustering uses flow in a network rather than distance alone,
+Infostop can keep frequently visited places apart even when they are close
+together, such as adjacent buildings. The paper compares this with other
+methods.
 
 Install
 -------
 
-::
+.. code-block:: bash
 
    pip install infostop
 
-Make sure to read the ``README.md`` in the `public repository`_ for notes on dependencies and installation.
+Infostop includes a small C++ extension. If pip finds no prebuilt wheel for
+your Python version and platform, it compiles the extension, and this needs a
+C++ compiler. The ``README.md`` in the `public repository`_ has notes for
+development installs.
 
-``infostop`` depends on the following packages which will be
-installed by ``pip`` during the installation process
+Cite
+----
 
--  ``numpy>=0.14``
--  ``infomap>=3.0.12``
+If you use Infostop in your research, please cite:
 
+   Ulf Aslak and Laura Alessandretti. *Infostop: scalable stop-location
+   detection in multi-user mobility data.* arXiv:2003.14370 (2020).
+   `doi:10.48550/arXiv.2003.14370 <https://doi.org/10.48550/arXiv.2003.14370>`_
 
-Bug reports & contributing
---------------------------
+Bug reports and contributing
+----------------------------
 
-You can contribute to the `public repository`_ and `raise issues`_ there.
+You can contribute to the `public repository`_ and `report issues`_ there.
 
-
+.. _`Aslak & Alessandretti (2020)`: https://arxiv.org/abs/2003.14370
+.. _`Infomap`: https://www.mapequation.org
 .. _`public repository`: https://github.com/ulfaslak/infostop
-.. _`raise issues`: https://github.com/ulfaslak/issues/issues/new
-
+.. _`report issues`: https://github.com/ulfaslak/infostop/issues
