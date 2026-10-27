@@ -171,3 +171,51 @@ def test_plot_map_shows_a_point_once_for_every_label_it_has():
         folmap = plot_map(model, display_data=display_data)
         at_point = np.all(folmap.points == trace[0, :2], axis=1)
         assert sorted(folmap.labels[at_point]) == expected_labels, display_data
+
+
+def _nothing_to_show(case):
+    """Return a fitted model and the `display_data` options that select no points."""
+    rng = np.random.default_rng(0)
+    visited_once = np.vstack([_visit(rng, HOME, 0), _visit(rng, WORK, 4000)])
+    if case == "infostop_all_-1":
+        model = Infostop(label_singleton=False)
+        model.fit_predict(visited_once)
+        return model, {"all_stationary", "unique_stationary"}
+    elif case == "infostop_no_moving_points":
+        model = Infostop()
+        model.fit_predict(visited_once)
+        return model, {"all_nonstationary"}
+    elif case == "spatial_infomap_all_-1":
+        model = SpatialInfomap(label_singleton=False)
+        model.fit_predict(np.array([HOME, WORK]))
+        return model, {"all_stationary", "unique_stationary"}
+    elif case == "spatial_infomap_no_-1":
+        model = SpatialInfomap()
+        model.fit_predict(visited_once[:, :2])
+        return model, {"all_nonstationary"}
+
+
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+@pytest.mark.parametrize(
+    "case",
+    [
+        "infostop_all_-1",
+        "infostop_no_moving_points",
+        "spatial_infomap_all_-1",
+        "spatial_infomap_no_-1",
+    ],
+)
+def test_plot_map_with_nothing_to_show(case):
+    model, empty = _nothing_to_show(case)
+    for display_data in DISPLAY_DATA:
+        folmap = plot_map(model, display_data=display_data, scatter=True)
+        assert isinstance(folmap.m, folium.Map)
+        assert "<html>" in folmap.m.get_root().render()
+        if display_data in empty:
+            # Centered on all the coordinates the model clustered
+            assert len(folmap.points) == 0, display_data
+            center = np.median(model._stat_coords, axis=0)
+        else:
+            assert len(folmap.points) > 0, display_data
+            center = np.median(folmap.points, axis=0)
+        assert np.allclose(folmap.m.location, center), display_data
