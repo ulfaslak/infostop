@@ -178,7 +178,7 @@ def test_integer_and_list_input_match_float_array():
     )
 
 
-@pytest.mark.parametrize("shape", [(3, 1), (3, 4), (0, 4)])
+@pytest.mark.parametrize("shape", [(3, 0), (3, 1), (3, 4), (0, 4)])
 def test_wrong_column_count_raises(shape):
     with pytest.raises(
         ValueError, match=rf"2 columns .* 3 columns .*, got {shape[1]}$"
@@ -187,6 +187,7 @@ def test_wrong_column_count_raises(shape):
 
 
 def test_one_dimensional_input_raises():
+    # pybind11's own check, which ran before #49 too.
     with pytest.raises(ValueError, match="dimensions"):
         events(np.zeros(3))
 
@@ -194,15 +195,18 @@ def test_one_dimensional_input_raises():
 @pytest.mark.parametrize("n_rows", [0, 3])
 def test_unknown_metric_raises(n_rows):
     # In a subprocess: without the check the call is undefined behaviour and may
-    # crash the process. The child exits 0 if it raises the expected ValueError and
-    # 3 if nothing is raised.
+    # crash the process. The child prints what happened; anything else (a crash,
+    # an import error) leaves no such line and shows up in the assertion message.
     code = (
-        "import sys, numpy as np, cpputils\n"
+        "import numpy as np, cpputils\n"
         "try:\n"
-        f"    cpputils.get_stationary_events(np.zeros(({n_rows}, 2)), 10, 2, 300, 86400, 'Euclidean')\n"
+        "    cpputils.get_stationary_events(\n"
+        f"        np.zeros(({n_rows}, 2)), 10, 2, 300, 86400, 'Euclidean'\n"
+        "    )\n"
         "except ValueError as e:\n"
-        "    sys.exit(0 if \"got 'Euclidean'\" in str(e) else 4)\n"
-        "sys.exit(3)\n"
+        "    print('raised' if \"got 'Euclidean'\" in str(e) else 'wrong message: ' + str(e))\n"
+        "else:\n"
+        "    print('not raised')\n"
     )
     env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
     child = subprocess.run(
@@ -212,7 +216,8 @@ def test_unknown_metric_raises(n_rows):
         text=True,
         timeout=60,
     )
-    if child.returncode not in (0, 3) and child.returncode > 0:
-        # A Python error in the child (e.g. cpputils not importable), not the bug.
-        raise RuntimeError(child.stderr)
-    assert child.returncode == 0
+    assert child.stdout.strip() == "raised", (
+        child.returncode,
+        child.stdout,
+        child.stderr,
+    )
