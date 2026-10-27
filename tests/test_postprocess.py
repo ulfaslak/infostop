@@ -45,18 +45,24 @@ def test_last_moving_interval_is_kept():
     assert _intervals([0, 0, -1, -1], [0, 1, 2, 3]) == [[0, 0, 1], [-1, 2, 3]]
 
 
+@pytest.mark.parametrize("label", [0, -1])
 @pytest.mark.parametrize(
-    "gap, expected",
+    "times, expected_bounds",
     [
-        (9, [[0, 0, 9]]),
-        (10, [[0, 0, 10]]),
-        (11, [[0, 0, 0], [0, 11, 11]]),
+        ([0, 9], [[0, 9]]),
+        ([0, 10], [[0, 10]]),
+        ([0, 10.5], [[0, 0], [10.5, 10.5]]),
+        ([0, 11], [[0, 0], [11, 11]]),
+        # The gap is measured from the previous point, not from the start
+        ([0, 10, 20], [[0, 20]]),
     ],
 )
-def test_max_time_between_boundary(gap, expected):
+def test_max_time_between_boundary(label, times, expected_bounds):
     # Same rule as `cpputils.get_stationary_events`: a gap of exactly
-    # `max_time_between` does not split a stop
-    assert _intervals([0, 0], [0, gap], max_time_between=10) == expected
+    # `max_time_between` does not split an interval. Moving points (-1) follow the
+    # same rule.
+    expected = [[label, start, end] for start, end in expected_bounds]
+    assert _intervals([label] * len(times), times, max_time_between=10) == expected
 
 
 def test_empty_input():
@@ -68,11 +74,21 @@ def test_single_point(label):
     assert _intervals([label], [5]) == [[label, 5, 5]]
 
 
-def test_adjacent_stop_events_at_one_location_are_one_interval():
-    # `compute_intervals` only sees labels: two stop events in a row that share a
-    # label (e.g. split because a point was farther than `r1` from the median, but
-    # within `r2`) are one stay at that location
-    assert _intervals([2, 2, 2, 2], [0, 1, 2, 3]) == [[2, 0, 3]]
+def _stop_events(trace, model, labels):
+    """Return `[label, start_time, end_time]` of each stop event that `model` found."""
+    _, event_map = cpputils.get_stationary_events(
+        trace,
+        model._r1,
+        model._min_size,
+        model._min_staying_time,
+        model._max_time_between,
+        "haversine",
+    )
+    event_map = np.array(event_map)
+    return [
+        [labels[event_map == j][0], *trace[event_map == j, 2][[0, -1]]]
+        for j in range(event_map.max() + 1)
+    ]
 
 
 def test_stop_intervals_match_stop_events():
@@ -88,20 +104,31 @@ def test_stop_intervals_match_stop_events():
 
     model = Infostop(max_time_between=max_time_between)
     labels = model.fit_predict(trace)
-    _, event_map = cpputils.get_stationary_events(
-        trace,
-        model._r1,
-        model._min_size,
-        model._min_staying_time,
-        max_time_between,
-        "haversine",
-    )
-    event_map = np.array(event_map)
-    events = [
-        [labels[event_map == j][0], *trace[event_map == j, 2][[0, -1]]]
-        for j in range(event_map.max() + 1)
-    ]
+    events = _stop_events(trace, model, labels)
     assert len(events) == 2
 
     intervals = _intervals(labels, trace[:, 2], max_time_between=max_time_between)
-    assert [iv for iv in intervals if iv[0] != -1] == events
+    assert intervals == [events[0], [-1, move[0, 2], move[-1, 2]], events[1]]
+
+
+def test_adjacent_stop_events_at_one_location_are_one_interval():
+    # The position jumps ~15 m halfway through the stay at home. With `r1=10` that
+    # starts a new stop event, but with `r2=30` both events get the home label.
+    # `compute_intervals` only sees labels, so this is one stay at home.
+    rng = np.random.default_rng(0)
+    home_1 = _visit(rng, HOME, 0, n=15)
+    home_2 = _visit(rng, (HOME[0] + 1.4e-4, HOME[1]), home_1[-1, 2] + 60, n=15)
+    move = _move(HOME, WORK, home_2[-1, 2] + 60)
+    work = _visit(rng, WORK, move[-1, 2] + 60)
+    trace = np.vstack([home_1, home_2, move, work])
+
+    model = Infostop(r1=10, r2=30)
+    labels = model.fit_predict(trace)
+    events = _stop_events(trace, model, labels)
+    assert len(events) == 3 and events[0][0] == events[1][0] != events[2][0]
+
+    assert _intervals(labels, trace[:, 2]) == [
+        [events[0][0], events[0][1], events[1][2]],
+        [-1, move[0, 2], move[-1, 2]],
+        events[2],
+    ]
