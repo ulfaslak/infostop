@@ -69,12 +69,22 @@ The [documentation](https://infostop.readthedocs.io) has runnable examples and e
 ## Installation
 `pip install infostop`
 
+**macOS without Infomap wheels** (Intel Macs, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, which needs OpenMP. Run `brew install libomp` first, or install with `OPENMP=0 pip install infostop` to build Infomap without OpenMP.
+
+**Reproducing earlier results.** Labels for points in ambiguous places, such as stops that lie close together, can differ between Infomap versions and between operating systems. Points labeled `-1` do not change. To reproduce earlier results, pin both `infostop` and `infomap` and use the same operating system. infostop 0.1.9 used `infomap==1.0.6`.
+
 ## Development notes
 We welcome contributions. Before you get started, you may want to read the notes below.
 
-You should **create a virtual environment**. In your local `infostop` folder, do:
+You should **create a virtual environment** with a Python from 3.9 to 3.14 (CI tests 3.9 and 3.14). `make env` uses the `python3` on your `PATH`. On Python 3.9 and 3.10 there are no Infomap wheels, so pip compiles Infomap, which needs a C++ compiler. In your local `infostop` folder, do:
 ```Bash
 $ make env
+$ source env/bin/activate
+```
+
+**Install the development tools** (`pytest`, `black`, `coverage`, `build`) and the dependencies:
+```Bash
+(env) $ make deps
 ```
 
 **Install `infostop`** into your virtual environment.
@@ -82,12 +92,13 @@ Do this by running:
 ```Bash
 (env) $ make install
 ```
-This command will also delete any pre-existing installation of Infostop, so you will probably want to run it after each code update.
+This command builds the package and replaces any pre-existing installation of Infostop, so you will probably want to run it after each code update.
 
 **Run tests**:
 ```Bash
 (env) $ make test
 ```
+Like CI, this runs the tests from a temporary folder against the installed package (not the source folder), so run `make install` first.
 
 **Check test coverage**:
 ```Bash
@@ -122,5 +133,5 @@ Finally, push first the tags and then your commits.
 When mergining a PR with a tagged commit, the PyPI deployment action is triggered, and the new version of Infostop becomes publicly available shortly thereafter.
 
 
-[build-image]: https://github.com/ulfaslak/infostop/actions/workflows/deploy.yml/badge.svg
-[build-url]: https://github.com/ulfaslak/infostop/actions/workflows/deploy.yml
+[build-image]: https://github.com/ulfaslak/infostop/actions/workflows/ci.yml/badge.svg
+[build-url]: https://github.com/ulfaslak/infostop/actions/workflows/ci.yml
