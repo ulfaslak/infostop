@@ -94,13 +94,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # Infomap has no macOS x86_64 wheels, and its source build (2.10 and
-      # later) needs the OpenMP headers. Intel Mac users need the same; see
-      # README "Installation".
-      - name: Install libomp for Infomap's source build
-        if: matrix.os == 'macos-15-intel'
-        run: brew install libomp
-
       # Python versions, platforms and the test command are set in
       # [tool.cibuildwheel] in pyproject.toml.
       - name: Build and test the wheels

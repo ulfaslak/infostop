@@ -17,3 +17,10 @@ archs = ["native"]
 test-requires = ["pytest"]
 test-sources = ["tests"]
 test-command = "python -m pytest -ra tests"
+
+# Infomap has no macOS x86_64 wheels, and its source build (2.10 and later)
+# fails without the OpenMP headers (https://github.com/ulfaslak/infostop/issues/77).
+# Build it without OpenMP, as README "Installation" tells Intel Mac users to.
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx_x86_64"
+test-environment = { OPENMP = "0" }
