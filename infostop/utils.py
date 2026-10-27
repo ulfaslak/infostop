@@ -184,8 +184,8 @@ def label_network(
         out : array-like (N, )
             Array of labels matching input in length. Detected stop locations are labeled from 0
             and up, and typically locations with more observations have lower indices. If
-            `label_singleton=False`, coordinates with no neighbors within distance `r2` are
-            labeled -1.
+            `label_singleton=False`, coordinates with no neighbors within distance `r2` and a
+            count of 1 are labeled -1.
     """
     # Infer the partition with infomap. Partiton looks like `{node: community, ...}`
     partition, singleton_nodes = infomap_communities(
@@ -197,18 +197,22 @@ def label_network(
         verbose,
     )
 
+    # Without `label_singleton`, a singleton is still a stop location if its count is
+    # above 1: several visits (or points) that share one coordinate
+    if not label_singleton:
+        singleton_nodes = [n for n in singleton_nodes if counts[n] > 1]
+
     # Add new labels to each singleton point (stop that was further than r2 from
     # any other point and thus was not represented in the network)
-    if label_singleton:
-        max_label = max(partition.values(), default=-1)
-        partition.update(
-            dict(
-                zip(
-                    singleton_nodes,
-                    range(max_label + 1, max_label + 1 + len(singleton_nodes)),
-                )
+    max_label = max(partition.values(), default=-1)
+    partition.update(
+        dict(
+            zip(
+                singleton_nodes,
+                range(max_label + 1, max_label + 1 + len(singleton_nodes)),
             )
         )
+    )
 
     # Cast the partition as a vector of labels like `[0, 1, 0, 3, 0, 0, 2, ...]`
     return np.array(
