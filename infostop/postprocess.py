@@ -8,6 +8,10 @@ def compute_intervals(labels, times, max_time_between=86400):
     ----------
         labels: 1d np.array of integers
         times: 1d np.array of integers. `len(labels) == len(times)`.
+        max_time_between: int/float
+            Consecutive points with the same label are in one interval if the time between
+            them is at most `max_time_between`. Use the `max_time_between` of the model that
+            produced `labels`.
     Returns
     -------
         intervals : array-like (shape=(N_intervals, 3))
@@ -19,6 +23,8 @@ def compute_intervals(labels, times, max_time_between=86400):
     # Input and output sequence
     trajectory = np.hstack([labels.reshape(-1, 1), times.reshape(-1, 1)])
     final_trajectory = []
+    if len(trajectory) == 0:
+        return final_trajectory
 
     # Init values
     loc_prev, t_start = trajectory[0]
@@ -28,7 +34,7 @@ def compute_intervals(labels, times, max_time_between=86400):
     for loc, time in trajectory[1:]:
 
         # if the location name has not changed update the end of the interval
-        if (loc == loc_prev) and (time - t_end) < max_time_between:
+        if (loc == loc_prev) and (time - t_end) <= max_time_between:
             t_end = time
 
         # if the location name has changed build the interval
@@ -43,7 +49,6 @@ def compute_intervals(labels, times, max_time_between=86400):
         loc_prev = loc
 
     # Add last group
-    if loc_prev == -1:
-        final_trajectory.append([loc_prev, t_start, t_end])
+    final_trajectory.append([loc_prev, t_start, t_end])
 
     return final_trajectory

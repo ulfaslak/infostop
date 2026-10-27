@@ -150,7 +150,7 @@ def infomap_communities(
         partition = {}
 
     if verbose:
-        print(f"Found {len(set(partition.values()))-1} stop locations")
+        print(f"Found {len(set(partition.values()))} stop locations")
 
     return partition, singleton_nodes
 
@@ -175,16 +175,19 @@ def label_network(
         singleton_nodes: array
             Non connected nodes.
         label_singleton: bool
-            If True, give stationary locations that was only visited once their own
-            label. If False, label them as outliers (-1).
+            If True, give each node that has no neighbor within `r2` its own label. If False,
+            label them as outliers (-1), unless their count is above 1.
 
     Returns
     -------
         out : array-like (N, )
-            Array of labels matching input in length. Detected stop locations are labeled from 0
-            and up, and typically locations with more observations have lower indices. If
-            `label_singleton=False`, coordinates with no neighbors within distance `r2` and a
-            count of 1 are labeled -1.
+            Array of labels matching input in length. Detected stop locations get non-negative
+            integer labels that carry no meaning beyond identity. Nodes with neighbors get
+            Infomap's module ids, which start at 1. With `label_singleton=True`, nodes with no
+            neighbor get the next labels after the largest module id, so if no node has a
+            neighbor (and Infomap is not run), labels start at 0. If `label_singleton=False`,
+            coordinates with no neighbors within distance `r2` and a count of 1 are labeled -1;
+            those with a count above 1 get the next labels after the largest module id.
     """
     # Infer the partition with infomap. Partiton looks like `{node: community, ...}`
     partition, singleton_nodes = infomap_communities(
