@@ -43,13 +43,15 @@ class FoliumMap:
         self.labels = labels
         if location is None:
             location = tuple(np.median(points, axis=0))
-        self.m = folium.Map(
-            location=location,
-            zoom_start=zoom_start,
-            tiles=tiles,
-            API_key=API_key,
-            attr="Infostop",
+        map_kwargs = dict(
+            location=location, zoom_start=zoom_start, tiles=tiles, API_key=API_key
         )
+        try:
+            # Named tiles keep their own attribution
+            self.m = folium.Map(**map_kwargs)
+        except ValueError:
+            # folium requires an attribution for a custom tile URL
+            self.m = folium.Map(attr="Infostop", **map_kwargs)
 
     def render_polygons(self, color="#ee9999", opacity=0.3):
         """Render convex hulls of points in each label-group.
