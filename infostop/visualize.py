@@ -149,7 +149,7 @@ class FoliumMap:
                 Sampling rate of scattered points. For example, using 0.2 shows only 20 percent
                 of the data.
         """
-        p = self.points
+        p = np.asarray(self.points)
         if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
@@ -178,7 +178,7 @@ class FoliumMap:
                 Sampling rate of points used for rendering the heatmap. For example, using 0.2
                 renders a heatmap based on only 20 percent of the data.
         """
-        p = self.points
+        p = np.asarray(self.points)
         if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False

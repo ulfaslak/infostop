@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from infostop import Infostop, SpatialInfomap, plot_map, visualize
+from infostop.visualize import FoliumMap
 
 DISPLAY_DATA = ["all", "all_stationary", "all_nonstationary", "unique_stationary"]
 
@@ -320,6 +321,15 @@ def test_plot_map_passes_plain_floats_to_folium(monkeypatch):
     )
     model, _, _ = _fitted("infostop")
     folmap = plot_map(model, display_data="all", scatter=True)
-    assert len(passed) == 2 * len(folmap.points)
+    # First the markers, then the heatmap, each at the shown points
+    assert passed == 2 * folmap.points.tolist()
     assert all(type(value) is float for location in passed for value in location)
     assert "np.float64" not in folmap.m.get_root().render()
+
+
+def test_folium_map_with_points_as_a_list():
+    points = [[55.70, 12.50], [55.71, 12.52], [55.70, 12.51]]
+    folmap = FoliumMap(points, np.array([0, 1, 0]))
+    folmap.render_points(subsampling=0.5)
+    folmap.render_heatmap(subsampling=0.5)
+    assert "<html>" in folmap.m.get_root().render()
