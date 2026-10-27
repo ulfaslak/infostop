@@ -65,7 +65,8 @@ def infomap_communities(
        array([9998]), array([9999])], dtype=object)`.
         num_trials : int
             Number of Infomap runs from different random starts; the partition with the
-            shortest codelength is kept.
+            shortest codelength is kept. Defaults to 1 here; `Infostop` and
+            `SpatialInfomap` default to 50.
 
     Returns
     -------
@@ -79,13 +80,15 @@ def infomap_communities(
 
     # Initiate  two-level Infomap
     network = Infomap(
-        f"--two-level --num-trials {num_trials}" + (" --silent" if not verbose else "")
+        f"--two-level --num-trials {int(num_trials)}"
+        + (" --silent" if not verbose else "")
     )
 
     # Add nodes (and reindex nodes because Infomap wants ranked indices)
     if verbose:
         print("    ... adding nodes:")
     name_map, name_map_inverse = {}, {}
+    strength = {}  # weighted degree of each node, to number the modules by flow
     singleton_nodes = []
     infomap_idx = 0
     for n, neighbors in progress(
@@ -114,11 +117,10 @@ def infomap_communities(
             enumerate(node_idx_neighbors), total=len(node_idx_neighbors)
         ):
             for neighbor in neighbors[neighbors > node]:
-                network.add_link(
-                    name_map[node],
-                    name_map[neighbor],
-                    max(counts[node], counts[neighbor]),
-                )
+                weight = max(counts[node], counts[neighbor])
+                network.add_link(name_map[node], name_map[neighbor], weight)
+                strength[node] = strength.get(node, 0) + weight
+                strength[neighbor] = strength.get(neighbor, 0) + weight
                 if verbose:
                     n_edges += 1
     else:
@@ -131,12 +133,12 @@ def infomap_communities(
             ):
                 if distance_metric == "haversine":
                     distance *= 6371000
-                network.add_link(
-                    name_map[node],
-                    name_map[neighbor],
-                    max(counts[node], counts[neighbor])
-                    * distance ** (-weight_exponent),
+                weight = max(counts[node], counts[neighbor]) * distance ** (
+                    -weight_exponent
                 )
+                network.add_link(name_map[node], name_map[neighbor], weight)
+                strength[node] = strength.get(node, 0) + weight
+                strength[neighbor] = strength.get(neighbor, 0) + weight
                 if verbose:
                     n_edges += 1
 
@@ -154,6 +156,7 @@ def infomap_communities(
         partition = dict(
             [(name_map_inverse[infomap_idx], module) for infomap_idx, module in modules]
         )
+        partition = number_modules_by_flow(partition, strength)
         if verbose:
             print("done")
     else:
@@ -163,6 +166,24 @@ def infomap_communities(
         print(f"Found {len(set(partition.values()))} stop locations")
 
     return partition, singleton_nodes
+
+
+def number_modules_by_flow(partition, strength):
+    """Renumber modules 1, 2, ... by flow, largest first, keeping Infomap's order for ties.
+
+    In an undirected network the flow of a module is proportional to the summed
+    weighted degree of its nodes. Infomap numbers modules this way, except after
+    several trials on some versions (2.9 to 2.15). Where Infomap already numbers by
+    flow, this changes nothing. Flows are compared as rounded shares of the total,
+    so that rounding noise in the sums does not break Infomap's order for ties.
+    """
+    flow = {}
+    for node, module in partition.items():
+        flow[module] = flow.get(module, 0) + strength[node]
+    total = sum(flow.values()) or 1
+    order = sorted(flow, key=lambda module: (-round(flow[module] / total, 12), module))
+    number = {module: i + 1 for i, module in enumerate(order)}
+    return {node: number[module] for node, module in partition.items()}
 
 
 def label_network(
@@ -190,6 +211,7 @@ def label_network(
             label them as outliers (-1).
         num_trials: int
             Number of Infomap runs; the partition with the shortest codelength is kept.
+            Defaults to 1 here; `Infostop` and `SpatialInfomap` default to 50.
 
     Returns
     -------

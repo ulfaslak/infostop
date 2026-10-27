@@ -10,13 +10,18 @@ class NoStopsFoundException(Exception):
     pass
 
 
-def _is_positive_int(value):
-    """True for an integer >= 1 (NumPy integers included, booleans excluded)."""
-    return (
-        isinstance(value, numbers.Integral)
-        and not isinstance(value, (bool, np.bool_))
-        and value >= 1
-    )
+def _check_num_trials(num_trials):
+    """Raise unless `num_trials` is an integer >= 1 (NumPy integers allowed, booleans not).
+
+    An explicit raise rather than `assert`, so that `python -O` cannot let a bad value
+    through to Infomap: Infomap 1.0.6 hangs on -1.
+    """
+    if (
+        not isinstance(num_trials, numbers.Integral)
+        or isinstance(num_trials, bool)
+        or num_trials < 1
+    ):
+        raise AssertionError("`num_trials` must be an integer >= 1")
 
 
 class Infostop:
@@ -288,7 +293,7 @@ class Infostop:
             self._label_singleton,
             self._distance_metric,
             self._verbose,
-            self._num_trials,
+            getattr(self, "_num_trials", 1),  # models pickled before num_trials: 1
         )
 
         # (5) Reverse the downsampling in step (2). NumPy 2.0.0 returns the inverse
@@ -412,9 +417,7 @@ class Infostop:
             "euclidean",
             "haversine",
         ], "`distance_metric` should be either 'euclidean' or 'haversine'"
-        assert _is_positive_int(
-            self._num_trials
-        ), "`num_trials` must be an integer >= 1"
+        _check_num_trials(self._num_trials)
 
     def _data_assertions(self, data):
         assert len(data) > 0, "There are no traces in the input data."
@@ -639,7 +642,7 @@ class SpatialInfomap:
             self._label_singleton,
             self._distance_metric,
             self._verbose,
-            self._num_trials,
+            getattr(self, "_num_trials", 1),  # models pickled before num_trials: 1
         )
 
         # (4) Reverse the downsampling in step (1). NumPy 2.0.0 returns the inverse
@@ -662,9 +665,7 @@ class SpatialInfomap:
             "euclidean",
             "haversine",
         ], "`distance_metric` should be either 'euclidean' or 'haversine'"
-        assert _is_positive_int(
-            self._num_trials
-        ), "`num_trials` must be an integer >= 1"
+        _check_num_trials(self._num_trials)
 
     def _data_assertions(self, data):
         assert not np.any(

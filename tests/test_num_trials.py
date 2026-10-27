@@ -11,6 +11,9 @@ different partition, so the tests fail if the default stops passing `num_trials`
 """
 
 import inspect
+import os
+import subprocess
+import sys
 
 import numpy as np
 import pytest
@@ -149,3 +152,54 @@ def test_num_trials_accepts_integers(model, value):
 def test_num_trials_comes_last_so_positional_arguments_keep_their_meaning(model):
     params = list(inspect.signature(model).parameters)
     assert params[-2:] == ["verbose", "num_trials"]
+
+
+# Two people. Work is visited three times in all, home twice and the shop once, so
+# work carries the most flow. Infomap 2.9 to 2.15 number the modules out of flow
+# order when they run more than one trial; infostop renumbers them by flow.
+HOME, WORK, SHOP = (0, 0), (400, 0), (0, 300)
+ALICE = [(HOME, 10), (WORK, 10), (HOME, 10)]
+BOB = [(WORK, 10), (SHOP, 10), (WORK, 10)]
+
+
+@pytest.mark.parametrize("num_trials", [1, 2, 50])
+def test_modules_are_numbered_by_flow_whatever_the_number_of_trials(num_trials):
+    alice, bob = make_trace(1, ALICE), make_trace(2, BOB)
+    labels_alice, labels_bob = Infostop(num_trials=num_trials).fit_predict([alice, bob])
+
+    # Visits are 10 points; walks are -1. Work is module 1, home module 2, and the
+    # shop, visited once, gets the next label after the modules.
+    assert [l for l in labels_alice.tolist() if l != -1] == [2] * 10 + [1] * 10 + [
+        2
+    ] * 10
+    assert [l for l in labels_bob.tolist() if l != -1] == [1] * 10 + [3] * 10 + [1] * 10
+
+
+def test_bad_num_trials_is_rejected_under_python_dash_o():
+    # Under `python -O` asserts are skipped; a bad value must still not reach
+    # Infomap (Infomap 1.0.6 hangs on -1).
+    code = (
+        "from infostop import Infostop\n"
+        "try:\n"
+        "    Infostop(num_trials=-1)\n"
+        "except AssertionError:\n"
+        "    print('rejected')\n"
+    )
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
+    child = subprocess.run(
+        [sys.executable, "-O", "-c", code],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert child.stdout.strip() == "rejected", (child.returncode, child.stderr)
+
+
+def test_model_pickled_before_num_trials_still_fits():
+    # Models pickled by older infostop versions have no `_num_trials`; they run
+    # Infomap once, as they did when they were made.
+    model = Infostop()
+    del model._num_trials
+    labels = model.fit_predict(make_trace(1, ALICE))
+    assert sorted(set(labels.tolist())) == [-1, 1, 2]  # home, work (visited once)
