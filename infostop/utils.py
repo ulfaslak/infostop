@@ -1,6 +1,10 @@
 import numpy as np
 from sklearn.neighbors import BallTree
-from scipy.spatial.qhull import QhullError
+
+try:
+    from scipy.spatial import QhullError
+except ImportError:  # SciPy < 1.8
+    from scipy.spatial.qhull import QhullError
 from infomap import Infomap
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
@@ -82,7 +86,7 @@ def infomap_communities(
         enumerate(node_idx_neighbors), total=len(node_idx_neighbors)
     ):
         if len(neighbors) > 1:
-            network.addNode(infomap_idx)
+            network.add_node(infomap_idx)
             name_map_inverse[infomap_idx] = n
             name_map[n] = infomap_idx
             infomap_idx += 1
@@ -104,7 +108,7 @@ def infomap_communities(
             enumerate(node_idx_neighbors), total=len(node_idx_neighbors)
         ):
             for neighbor in neighbors[neighbors > node]:
-                network.addLink(
+                network.add_link(
                     name_map[node],
                     name_map[neighbor],
                     max(counts[node], counts[neighbor]),
@@ -121,7 +125,7 @@ def infomap_communities(
             ):
                 if distance_metric == "haversine":
                     distance *= 6371000
-                network.addLink(
+                network.add_link(
                     name_map[node],
                     name_map[neighbor],
                     max(counts[node], counts[neighbor])
@@ -137,13 +141,12 @@ def infomap_communities(
     if verbose:
         print("    ... running Infomap...", end=" ")
     if len(name_map) > 0:
-        network.run()
+        result = network.run()
+        # Infomap >= 2.14 returns the result; later versions deprecate `network.modules`
+        modules = network.modules if result is None else result.modules().items()
         # Convert to node-community dict format
         partition = dict(
-            [
-                (name_map_inverse[infomap_idx], module)
-                for infomap_idx, module in network.modules
-            ]
+            [(name_map_inverse[infomap_idx], module) for infomap_idx, module in modules]
         )
         if verbose:
             print("done")
@@ -151,7 +154,7 @@ def infomap_communities(
         partition = {}
 
     if verbose:
-        print(f"Found {len(set(partition.values()))-1} stop locations")
+        print(f"Found {len(set(partition.values()))} stop locations")
 
     return partition, singleton_nodes
 
@@ -176,16 +179,19 @@ def label_network(
         singleton_nodes: array
             Non connected nodes.
         label_singleton: bool
-            If True, give stationary locations that was only visited once their own
-            label. If False, label them as outliers (-1).
+            If True, give each node that has no neighbor within `r2` its own label. If False,
+            label them as outliers (-1), unless their count is above 1.
 
     Returns
     -------
         out : array-like (N, )
-            Array of labels matching input in length. Detected stop locations are labeled from 0
-            and up, and typically locations with more observations have lower indices. If
-            `label_singleton=False`, coordinates with no neighbors within distance `r2` are
-            labeled -1.
+            Array of labels matching input in length. Detected stop locations get non-negative
+            integer labels that carry no meaning beyond identity. Nodes with neighbors get
+            Infomap's module ids, which start at 1. With `label_singleton=True`, nodes with no
+            neighbor get the next labels after the largest module id, so if no node has a
+            neighbor (and Infomap is not run), labels start at 0. If `label_singleton=False`,
+            coordinates with no neighbors within distance `r2` and a count of 1 are labeled -1;
+            those with a count above 1 get the next labels after the largest module id.
     """
     # Infer the partition with infomap. Partiton looks like `{node: community, ...}`
     partition, singleton_nodes = infomap_communities(
@@ -197,18 +203,22 @@ def label_network(
         verbose,
     )
 
+    # Without `label_singleton`, a singleton is still a stop location if its count is
+    # above 1: several visits (or points) that share one coordinate
+    if not label_singleton:
+        singleton_nodes = [n for n in singleton_nodes if counts[n] > 1]
+
     # Add new labels to each singleton point (stop that was further than r2 from
     # any other point and thus was not represented in the network)
-    if label_singleton:
-        max_label = max(partition.values(), default=-1)
-        partition.update(
-            dict(
-                zip(
-                    singleton_nodes,
-                    range(max_label + 1, max_label + 1 + len(singleton_nodes)),
-                )
+    max_label = max(partition.values(), default=-1)
+    partition.update(
+        dict(
+            zip(
+                singleton_nodes,
+                range(max_label + 1, max_label + 1 + len(singleton_nodes)),
             )
         )
+    )
 
     # Cast the partition as a vector of labels like `[0, 1, 0, 3, 0, 0, 2, ...]`
     return np.array(
