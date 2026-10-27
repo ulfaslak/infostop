@@ -150,7 +150,7 @@ def infomap_communities(
         partition = {}
 
     if verbose:
-        print(f"Found {len(set(partition.values()))-1} stop locations")
+        print(f"Found {len(set(partition.values()))} stop locations")
 
     return partition, singleton_nodes
 
