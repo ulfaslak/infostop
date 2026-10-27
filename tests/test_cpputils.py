@@ -178,33 +178,30 @@ def test_integer_and_list_input_match_float_array():
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=pytest.fail.Exception,
-    reason="column counts other than 2 and 3 are not rejected; "
-    "https://github.com/ulfaslak/infostop/issues/49",
-)
-@pytest.mark.parametrize("n_cols", [1, 4])
-def test_wrong_column_count_raises(n_cols):
-    with pytest.raises(ValueError):
-        events(np.zeros((3, n_cols)))
+@pytest.mark.parametrize("shape", [(3, 1), (3, 4), (0, 4)])
+def test_wrong_column_count_raises(shape):
+    with pytest.raises(
+        ValueError, match=rf"2 columns .* 3 columns .*, got {shape[1]}$"
+    ):
+        events(np.zeros(shape))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="an unknown distance_metric calls an uninitialised function pointer; "
-    "https://github.com/ulfaslak/infostop/issues/49",
-)
-def test_unknown_metric_raises():
-    # In a subprocess: the call is undefined behaviour and may crash the process.
-    # The child exits 0 if it raises ValueError and 3 if nothing is raised.
+def test_one_dimensional_input_raises():
+    with pytest.raises(ValueError, match="dimensions"):
+        events(np.zeros(3))
+
+
+@pytest.mark.parametrize("n_rows", [0, 3])
+def test_unknown_metric_raises(n_rows):
+    # In a subprocess: without the check the call is undefined behaviour and may
+    # crash the process. The child exits 0 if it raises the expected ValueError and
+    # 3 if nothing is raised.
     code = (
         "import sys, numpy as np, cpputils\n"
         "try:\n"
-        "    cpputils.get_stationary_events(np.zeros((3, 2)), 10, 2, 300, 86400, 'Euclidean')\n"
-        "except ValueError:\n"
-        "    sys.exit(0)\n"
+        f"    cpputils.get_stationary_events(np.zeros(({n_rows}, 2)), 10, 2, 300, 86400, 'Euclidean')\n"
+        "except ValueError as e:\n"
+        "    sys.exit(0 if \"got 'Euclidean'\" in str(e) else 4)\n"
         "sys.exit(3)\n"
     )
     env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
