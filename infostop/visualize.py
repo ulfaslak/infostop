@@ -19,7 +19,8 @@ class FoliumMap:
         API_key : str
             Mapbox API key.
         location : tuple of floats
-            Center of the map. Default is the median of `points`.
+            Center of the map. Default is the median of `points`, so it must be given
+            if `points` is empty.
 
     Example
     -------
@@ -106,7 +107,7 @@ class FoliumMap:
                 of the data.
         """
         p = self.points
-        if subsampling < 1:
+        if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
             )
@@ -130,7 +131,7 @@ class FoliumMap:
                 renders a heatmap based on only 20 percent of the data.
         """
         p = self.points
-        if subsampling < 1:
+        if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
             )
