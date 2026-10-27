@@ -165,6 +165,12 @@ class Infostop:
 
         stop_events, event_maps = [], []
         for u, coords_u in progress(enumerate(self._data), total=len(self._data)):
+            # A user with no points has no stop events and gets an empty label array
+            if len(coords_u) == 0:
+                stop_events.append([])
+                event_maps.append(np.array([], dtype=int))
+                continue
+
             stop_events_u, event_map_u = cpputils.get_stationary_events(
                 coords_u,
                 self._r1,
@@ -180,7 +186,7 @@ class Infostop:
             stop_events.append(stop_events_u)
             event_maps.append(event_map_u)
 
-        if self._verbose:
+        if self._verbose and avg_reduction:
             print(
                 "    --> %sreduction was %.1f%%"
                 % ("average " if self.multiuser else "", np.mean(avg_reduction))
@@ -393,7 +399,7 @@ class Infostop:
                 assert np.all(coords_u[:-1, 2] <= coords_u[1:, 2]), (
                     "%sTimestamps must be ordered" % error_insert
                 )
-            if self._distance_metric == "haversine":
+            if self._distance_metric == "haversine" and len(coords_u) > 0:
                 assert np.min(coords_u[:, 0]) > -90 and np.max(coords_u[:, 0]) < 90, (
                     "%sLatitude (column 0) must have values between -90 and 90"
                     % error_insert
@@ -402,6 +408,9 @@ class Infostop:
                     "%sLongitude (column 1) must have values between -180 and 180"
                     % error_insert
                 )
+        assert any(
+            len(coords_u) > 0 for coords_u in data
+        ), "There are no points in the input data."
 
     def _fitted_assertion(self):
         assert (
