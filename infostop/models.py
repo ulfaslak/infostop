@@ -1,3 +1,5 @@
+import numbers
+
 import numpy as np
 import cpputils
 from infostop import utils
@@ -6,6 +8,15 @@ from tqdm import tqdm
 
 class NoStopsFoundException(Exception):
     pass
+
+
+def _is_positive_int(value):
+    """True for an integer >= 1 (NumPy integers included, booleans excluded)."""
+    return (
+        isinstance(value, numbers.Integral)
+        and not isinstance(value, (bool, np.bool_))
+        and value >= 1
+    )
 
 
 class Infostop:
@@ -76,6 +87,13 @@ class Infostop:
         verbose : bool
             Print output during the fitting procedure. Mostly for development and debugging. Option will
             be removed in future versions.
+        num_trials : int
+            Number of times Infomap clusters the network from a different random start. The partition
+            with the shortest description (codelength) is kept. With 1 trial, labels on crowded stops
+            (stops that overlap within `r2`) can differ between Infomap versions and between operating
+            systems; the default 50 makes them agree for almost all inputs. Use 1 to get the labels that
+            infostop gave before this option existed (on the same Infomap version and operating system).
+            More trials take more time in the clustering step.
 
     Returns
     -------
@@ -100,6 +118,7 @@ class Infostop:
         weighted=False,
         weight_exponent=1,
         verbose=False,
+        num_trials=50,
     ):
         # Set input parameters as attributes
         self._r1 = r1
@@ -113,6 +132,7 @@ class Infostop:
         self._weighted = weighted
         self._weight_exponent = weight_exponent
         self._verbose = verbose
+        self._num_trials = num_trials
 
         # Initialize internal variables
         self._data = None
@@ -268,6 +288,7 @@ class Infostop:
             self._label_singleton,
             self._distance_metric,
             self._verbose,
+            self._num_trials,
         )
 
         # (5) Reverse the downsampling in step (2). NumPy 2.0.0 returns the inverse
@@ -391,6 +412,9 @@ class Infostop:
             "euclidean",
             "haversine",
         ], "`distance_metric` should be either 'euclidean' or 'haversine'"
+        assert _is_positive_int(
+            self._num_trials
+        ), "`num_trials` must be an integer >= 1"
 
     def _data_assertions(self, data):
         assert len(data) > 0, "There are no traces in the input data."
@@ -484,6 +508,13 @@ class SpatialInfomap:
         verbose : bool
             Print output during the fitting procedure. Mostly for development and debugging. Option will
             be removed in future versions.
+        num_trials : int
+            Number of times Infomap clusters the network from a different random start. The partition
+            with the shortest description (codelength) is kept. With 1 trial, labels on crowded points
+            (clusters that overlap within `r2`) can differ between Infomap versions and between
+            operating systems; the default 50 makes them agree for almost all inputs. Use 1 to get the
+            labels that infostop gave before this option existed (on the same Infomap version and
+            operating system). More trials take more time in the clustering step.
 
     Returns
     -------
@@ -504,6 +535,7 @@ class SpatialInfomap:
         weighted=False,
         weight_exponent=1,
         verbose=False,
+        num_trials=50,
     ):
         # Set input parameters as attributes
         self._r2 = r2
@@ -513,6 +545,7 @@ class SpatialInfomap:
         self._weighted = weighted
         self._weight_exponent = weight_exponent
         self._verbose = verbose
+        self._num_trials = num_trials
         self._data = None
         self._stat_coords = None
         self._stat_labels = None
@@ -606,6 +639,7 @@ class SpatialInfomap:
             self._label_singleton,
             self._distance_metric,
             self._verbose,
+            self._num_trials,
         )
 
         # (4) Reverse the downsampling in step (1). NumPy 2.0.0 returns the inverse
@@ -628,6 +662,9 @@ class SpatialInfomap:
             "euclidean",
             "haversine",
         ], "`distance_metric` should be either 'euclidean' or 'haversine'"
+        assert _is_positive_int(
+            self._num_trials
+        ), "`num_trials` must be an integer >= 1"
 
     def _data_assertions(self, data):
         assert not np.any(

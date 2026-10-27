@@ -54,6 +54,7 @@ def infomap_communities(
     weight_exponent,
     distance_metric,
     verbose,
+    num_trials=1,
 ):
     """Two-level partition of single-layer network with Infomap.
 
@@ -62,6 +63,9 @@ def infomap_communities(
         node_index_neighbors : array of arrays
             Example: `array([array([0]), array([1]), array([2]), ..., array([9997]),
        array([9998]), array([9999])], dtype=object)`.
+        num_trials : int
+            Number of Infomap runs from different random starts; the partition with the
+            shortest codelength is kept.
 
     Returns
     -------
@@ -74,7 +78,9 @@ def infomap_communities(
         progress = pass_func
 
     # Initiate  two-level Infomap
-    network = Infomap("--two-level" + (" --silent" if not verbose else ""))
+    network = Infomap(
+        f"--two-level --num-trials {num_trials}" + (" --silent" if not verbose else "")
+    )
 
     # Add nodes (and reindex nodes because Infomap wants ranked indices)
     if verbose:
@@ -167,6 +173,7 @@ def label_network(
     label_singleton,
     distance_metric,
     verbose,
+    num_trials=1,
 ):
     """Infer infomap clusters from distance matrix and link distance threshold.
 
@@ -181,6 +188,8 @@ def label_network(
         label_singleton: bool
             If True, give each node that has no neighbor within `r2` its own label. If False,
             label them as outliers (-1).
+        num_trials: int
+            Number of Infomap runs; the partition with the shortest codelength is kept.
 
     Returns
     -------
@@ -200,6 +209,7 @@ def label_network(
         weight_exponent,
         distance_metric,
         verbose,
+        num_trials,
     )
 
     # Add new labels to each singleton point (stop that was further than r2 from
