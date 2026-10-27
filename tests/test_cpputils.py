@@ -215,7 +215,10 @@ def test_unknown_metric_raises():
         text=True,
         timeout=60,
     )
-    if child.returncode not in (0, 3) and child.returncode > 0:
+    # A crash is the bug too: a negative code is a POSIX signal, and a code of
+    # 0xC0000000 or more is a Windows NTSTATUS (e.g. 0xC0000005, access violation).
+    crashed = child.returncode < 0 or child.returncode >= 0xC0000000
+    if child.returncode not in (0, 3) and not crashed:
         # A Python error in the child (e.g. cpputils not importable), not the bug.
-        raise RuntimeError(child.stderr)
-    assert child.returncode == 0
+        raise RuntimeError(f"exit code {child.returncode}: {child.stderr}")
+    assert child.returncode == 0, f"exit code {child.returncode}"
