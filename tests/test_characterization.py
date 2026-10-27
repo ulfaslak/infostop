@@ -1,8 +1,8 @@
 """Characterization tests: pin the partitions the current pipeline produces.
 
-Label integers are arbitrary (Infomap versions may number modules differently), so
-partitions are compared after relabelling by order of first occurrence. Positions
-labelled `-1` must match exactly.
+Label integers are arbitrary (they follow Infomap's module numbering, which starts at
+1, except when Infomap is not run at all), so partitions are compared after
+relabelling by order of first occurrence. Positions labelled `-1` must match exactly.
 
 Each pinned partition is written as runs of `(label, count)` over the trace, so it
 reads like the trace design: a stop location is one run, a walk between stops is
@@ -184,7 +184,8 @@ def test_infostop_label_singleton_false():
 
 @pytest.mark.parametrize("metric", ["haversine", "euclidean"])
 @pytest.mark.parametrize("weight_exponent", [1, 2])
-def test_infostop_weighted(metric, weight_exponent):
+def test_infostop_weighted_keeps_separate_stops(metric, weight_exponent):
+    # Stops with no links between them stay separate under any weighting.
     trace = make_trace(1, SINGLE_VISITS, metric)
     model = Infostop(
         distance_metric=metric, weighted=True, weight_exponent=weight_exponent
@@ -263,9 +264,9 @@ def test_spatial_infomap(metric, label_singleton, expected):
 
 
 # Borderline cases where Infomap has a real choice to make. The pinned partitions
-# were identical on Infomap 1.0.6, 2.0.0, 2.10.0, 2.13.0, 2.14.0 and 2.16.0. Other
-# borderline inputs do differ between Infomap versions, so if one of these fails
-# after an Infomap upgrade, labels on borderline data have changed for users.
+# were identical on Infomap 1.0.6 and on ten 2.x releases from 2.0.0 to 2.16.0.
+# Other borderline inputs do differ between Infomap versions, so if one of these
+# fails after an Infomap upgrade, labels on borderline data have changed for users.
 
 # Four visits at x=0, four at x=18, and one at x=9 that is within `r2` of both
 # sides. Every visit is followed by a visit to D.
