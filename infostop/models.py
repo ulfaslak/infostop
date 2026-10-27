@@ -246,8 +246,9 @@ class Infostop:
             self._verbose,
         )
 
-        # (5) Reverse the downsampling in step (2)
-        self._labels = self._stat_labels[inverse_indices]
+        # (5) Reverse the downsampling in step (2). NumPy 2.0.0 returns the inverse
+        # of `np.unique(..., axis=0)` with shape (N, 1), so flatten it.
+        self._labels = self._stat_labels[inverse_indices.reshape(-1)]
 
         # (6) Reverse the downsampling in step (1)
         self.labels = []
@@ -554,8 +555,9 @@ class SpatialInfomap:
             self._verbose,
         )
 
-        # (4) Reverse the downsampling in step (2)
-        self._labels = self._stat_labels[inverse_indices]
+        # (4) Reverse the downsampling in step (2). NumPy 2.0.0 returns the inverse
+        # of `np.unique(..., axis=0)` with shape (N, 1), so flatten it.
+        self._labels = self._stat_labels[inverse_indices.reshape(-1)]
 
         # Update model state and return labels
         self._is_fitted = True
