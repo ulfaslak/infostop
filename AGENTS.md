@@ -32,7 +32,7 @@ In sessions where you edit files in this repository you must follow certain rule
 Branch from `origin/master`. Edits on `master` are forbidden and there are **no size exceptions** (read-only tasks such as research, exploration and answering questions require no worktree). Use `git gtr`:
 
 1. **List:** Run `git gtr list` to see all existing worktrees.
-2. **Create:** From the primary clone, run `git gtr new <branch-name>` (example: `git gtr new fix/infomap-2-api`). There is no `.gtrconfig` here, so gtr does not set up Python for you: create the venv and install as in § Development › Setup.
+2. **Create:** From the primary clone, run `git gtr new <branch-name>` (example: `git gtr new fix/infomap-2-api`). There is no `.gtrconfig` here, so gtr does not set up Python for you: create a venv in the worktree and install the package into it.
 3. **Work:** `cd` into the worktree path shown by gtr. All edits, commits, and pushes happen there. **Commit early and frequently in worktrees.** This is to minimize the risk of losing work in the unlikely case that the worktree is deleted.
 4. **After merge:** From the primary clone, remove your worktree. Run `git gtr rm <branch-name>`, then `git checkout master && git pull`. If the worktree directory is deleted while it's your cwd, the session becomes permanently stuck. **Never remove another agent's worktree.**
 
@@ -99,7 +99,7 @@ Launch a cold reviewer subagent before your turn ends.
 - **Always apply when the change touches the pipeline or packaging.** Specifically `cpputils/`, `infostop/models.py`, `infostop/utils.py`, `setup.py`, `requirements.txt` or the CI workflow.
 - **Skip for docs-only and comment-only changes.**
 - **How.** Give it **only the diff and the files it needs to read, not your reasoning, not the issue's framing, not "here's what I built and why."** It must not know the happy path.
-- **The subagent reviews; it does not implement.** You triage the findings: fix the real ones as fix commits on the branch (they feed Phase 3), and note in the PR body why you rejected any you didn't act on.
+- **The subagent reviews; it does not implement.** You triage the findings: fix the real ones as fix commits on the branch, and note in the PR body why you rejected any you didn't act on.
 
 ### Phase 3: Clean up
 
