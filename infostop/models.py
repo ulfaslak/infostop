@@ -555,7 +555,7 @@ class SpatialInfomap:
             self._verbose,
         )
 
-        # (4) Reverse the downsampling in step (2). NumPy 2.0.0 returns the inverse
+        # (4) Reverse the downsampling in step (1). NumPy 2.0.0 returns the inverse
         # of `np.unique(..., axis=0)` with shape (N, 1), so flatten it.
         self._labels = self._stat_labels[inverse_indices.reshape(-1)]
 
