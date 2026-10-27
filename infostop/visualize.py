@@ -217,30 +217,32 @@ def plot_map(
         "unique_stationary",
     ], 'Keyword argument `display_data` must be one of "all", "all_stationary", "all_nonstationary" and "unique_stationary".'
 
-    # If it's an instance of Infostop
-    if hasattr(model, "r1"):
-        if "all" in display_data:
-            data_unique, indices_unique = np.unique(
-                np.vstack(model._data)[:, :2], axis=0, return_index=True
-            )
-            labels_unique = np.hstack(model._coord_labels)[indices_unique]
-            if display_data == "all":
-                points = data_unique
-                labels = labels_unique
-            elif display_data == "all_stationary":
-                points = data_unique[labels_unique >= 0]
-                labels = labels_unique[labels_unique >= 0]
-            elif display_data == "all_nonstationary":
-                points = data_unique[labels_unique == -1]
-                labels = labels_unique[labels_unique == -1]
-        elif display_data == "unique_stationary":
-            points = model._stat_coords[model._stat_labels >= 0]
-            labels = model._stat_labels[model._stat_labels >= 0]
-
-    # If it's an instance of SpatialInfomap
-    else:
+    if display_data == "unique_stationary":
         points = model._stat_coords[model._stat_labels >= 0]
         labels = model._stat_labels[model._stat_labels >= 0]
+    else:
+        # If it's an instance of Infostop
+        if hasattr(model, "_r1"):
+            coords = np.vstack(model._data)[:, :2]
+            coord_labels = np.hstack(model.labels)
+
+        # If it's an instance of SpatialInfomap
+        else:
+            coords = model._data
+            coord_labels = model._labels
+
+        # Remove duplicate points, but keep a point once for every label it has
+        unique = np.unique(np.column_stack([coords, coord_labels]), axis=0)
+        data_unique, labels_unique = unique[:, :2], unique[:, 2].astype(int)
+        if display_data == "all":
+            points = data_unique
+            labels = labels_unique
+        elif display_data == "all_stationary":
+            points = data_unique[labels_unique >= 0]
+            labels = labels_unique[labels_unique >= 0]
+        elif display_data == "all_nonstationary":
+            points = data_unique[labels_unique == -1]
+            labels = labels_unique[labels_unique == -1]
 
     folmap = FoliumMap(
         points=points,
