@@ -3,9 +3,11 @@
 
 [tool.cibuildwheel]
 # The supported CPython versions, the same range as the CI test matrix.
+# Infomap has wheels for 3.11 to 3.14 only, so the tests of the 3.9 and 3.10
+# wheels compile Infomap from source.
 # Free-threaded (cp314t) and CPython 3.15 builds are left out: Infomap has no
 # wheels for them yet.
-build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*"]
 # Infomap has no musllinux wheels. On musl systems (Alpine), pip builds from the sdist.
 skip = ["*-musllinux_*"]
 # Each CI runner builds for its own architecture only.
