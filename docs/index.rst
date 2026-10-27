@@ -1,5 +1,9 @@
-Infostop - Stop location detection
-==================================
+Infostop: stop location detection
+=================================
+
+Infostop finds the places where people stop in mobility data, such as GPS
+traces. It gives each point the label of its stop location, or ``-1`` if the
+point was recorded while moving.
 
 .. toctree::
    :maxdepth: 1
@@ -17,4 +21,3 @@ Infostop - Stop location detection
    :caption: Reference
 
    reference/reference
-

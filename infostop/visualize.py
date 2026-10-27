@@ -18,6 +18,9 @@ class FoliumMap:
             Default is 'OpenStreetMap'. A good minimalist alternative is 'CartoDBpositron'.
         API_key : str
             Mapbox API key.
+        location : tuple of floats
+            Center of the map. Default is the median of `points`, so it must be given
+            if `points` is empty.
 
     Example
     -------
@@ -28,12 +31,20 @@ class FoliumMap:
     """
 
     def __init__(
-        self, points, labels, zoom_start=10, tiles="OpenStreetMap", API_key=None
+        self,
+        points,
+        labels,
+        zoom_start=10,
+        tiles="OpenStreetMap",
+        API_key=None,
+        location=None,
     ):
         self.points = points
         self.labels = labels
+        if location is None:
+            location = tuple(np.median(points, axis=0))
         self.m = folium.Map(
-            location=tuple(np.median(points, axis=0)),
+            location=location,
             zoom_start=zoom_start,
             tiles=tiles,
             API_key=API_key,
@@ -96,7 +107,7 @@ class FoliumMap:
                 of the data.
         """
         p = self.points
-        if subsampling < 1:
+        if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
             )
@@ -120,7 +131,7 @@ class FoliumMap:
                 renders a heatmap based on only 20 percent of the data.
         """
         p = self.points
-        if subsampling < 1:
+        if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
             )
@@ -245,12 +256,18 @@ def plot_map(
             points = data_unique[labels_unique == -1]
             labels = labels_unique[labels_unique == -1]
 
+    # With nothing to show, center the map on the coordinates the model clustered
+    location = None
+    if len(points) == 0:
+        location = tuple(np.median(model._stat_coords, axis=0))
+
     folmap = FoliumMap(
         points=points,
         labels=labels,
         zoom_start=zoom_start,
         tiles=tiles,
         API_key=API_key,
+        location=location,
     )
 
     if polygons:

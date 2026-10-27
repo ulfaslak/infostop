@@ -21,7 +21,7 @@ The core algorithm is sound and settled. Most of what is broken is around it: pa
 
 **Releases are irreversible.** A version number on PyPI can never be reused, and users pin versions in their papers' code. Never release, and never push a tag, without the human's explicit go in the current session.
 
-The intended procedure (from `README.md`): run `python increment_version.py` once, commit, tag the commit `v<version>` with the version from `metadata.py`, then `git push --tags && git push`. CI then builds and publishes.
+The intended procedure (from `README.md`): run `python increment_version.py` once, commit, tag the commit `v<version>` with the version from `metadata.py`, then `git push --atomic origin master v<version>`. CI (`.github/workflows/release.yml`) then builds, tests and publishes.
 
 # Workflow rules
 

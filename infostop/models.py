@@ -393,9 +393,12 @@ class Infostop:
         ], "`distance_metric` should be either 'euclidean' or 'haversine'"
 
     def _data_assertions(self, data):
-        assert not np.any(
-            np.isnan(np.vstack(data))
-        ), f"There are {np.isnan(np.vstack(data)).sum()} NaN values in the input data."
+        assert len(data) > 0, "There are no traces in the input data."
+        # Check each trace on its own: users may differ in their number of columns
+        assert not any(np.isnan(np.asarray(c)).any() for c in data), (
+            f"There are {sum(np.isnan(np.asarray(c)).sum() for c in data)} NaN values "
+            "in the input data."
+        )
         for u, coords_u in enumerate(data):
             error_insert = "" if not self.multiuser else f"User {u}: "
             assert hasattr(coords_u, "shape") and len(coords_u.shape) == 2, (
