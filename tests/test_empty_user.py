@@ -1,3 +1,4 @@
+import re
 import types
 
 import numpy as np
@@ -73,17 +74,41 @@ def test_empty_user_gets_empty_labels(metric, n_columns, stationary_event_calls)
         assert labels[i].dtype == labels[1].dtype
     np.testing.assert_array_equal(labels[1], expected[0])
     np.testing.assert_array_equal(labels[3], expected[1])
-    assert 0 not in stationary_event_calls
+    assert stationary_event_calls == [len(trace_1), len(trace_2)] * 2
+
+
+def reduction_line(out):
+    (line,) = re.findall(r"^ *--> average reduction was .*$", out, re.M)
+    return line
 
 
 def test_empty_user_with_verbose(capsys, stationary_event_calls):
+    Infostop(verbose=True).fit_predict([TRACE_1])
+    expected = reduction_line(capsys.readouterr().out)
+
     labels = Infostop(verbose=True).fit_predict([TRACE_1, np.empty((0, 3))])
     assert len(labels[1]) == 0
-    assert 0 not in stationary_event_calls
+    # The empty user is left out of the average reduction
+    assert reduction_line(capsys.readouterr().out) == expected
+    assert stationary_event_calls == [len(TRACE_1)] * 2
 
 
 @pytest.mark.parametrize("data", [[np.empty((0, 3))] * 2, np.empty((0, 3))])
 def test_only_empty_traces(data, stationary_event_calls):
-    with pytest.raises(Exception, match="^No stop events found"):
+    with pytest.raises(
+        AssertionError, match=r"^There are no points in the input data\.$"
+    ):
         Infostop().fit_predict(data)
+    assert stationary_event_calls == []
+
+
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+def test_only_empty_traces_verbose_without_input_checks(
+    monkeypatch, capsys, stationary_event_calls
+):
+    # As under `python -O`, where the input checks are skipped
+    monkeypatch.setattr(Infostop, "_data_assertions", lambda self, data: None)
+    with pytest.raises(Exception, match="^No stop events found"):
+        Infostop(verbose=True).fit_predict([np.empty((0, 3))] * 2)
+    assert "reduction was" not in capsys.readouterr().out
     assert stationary_event_calls == []

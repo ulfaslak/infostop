@@ -186,7 +186,7 @@ class Infostop:
             stop_events.append(stop_events_u)
             event_maps.append(event_map_u)
 
-        if self._verbose:
+        if self._verbose and avg_reduction:
             print(
                 "    --> %sreduction was %.1f%%"
                 % ("average " if self.multiuser else "", np.mean(avg_reduction))
@@ -395,6 +395,9 @@ class Infostop:
                     "%sLongitude (column 1) must have values between -180 and 180"
                     % error_insert
                 )
+        assert any(
+            len(coords_u) > 0 for coords_u in data
+        ), "There are no points in the input data."
 
     def _fitted_assertion(self):
         assert (
