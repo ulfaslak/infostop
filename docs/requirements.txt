@@ -1,2 +1,2 @@
-pip>=18.0
-
+sphinx==9.2.0
+sphinx-rtd-theme==3.1.0
