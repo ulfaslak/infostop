@@ -28,7 +28,7 @@ import types
 import scipy.spatial
 class OldQhullError(Exception):
     pass
-del scipy.spatial.QhullError
+vars(scipy.spatial).pop("QhullError", None)
 sys.modules["scipy.spatial.qhull"] = types.ModuleType("scipy.spatial.qhull")
 sys.modules["scipy.spatial.qhull"].QhullError = OldQhullError
 import infostop
