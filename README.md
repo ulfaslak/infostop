@@ -42,7 +42,9 @@ A stop location solution can be obtained using:
 >>> labels = model.fit_predict(data)
 ```
 
-Alternatively, `data` can also be a list of `numpy.array`s, in which case it is assumed that list elements are seperate traces in the same space. In this *multi segment* (or *multi user*) case, Infostop finds stop locations that are shared by different segments.
+`labels` has one integer per row of `data`: the label of the stop location the point belongs to, or `-1` if the point is not part of a stop (for example, it was recorded while moving). With the default `distance_metric="haversine"`, the distances `r1` and `r2` are in meters. The time parameters `min_staying_time` and `max_time_between` are in the units of the time column, and their defaults assume seconds.
+
+Alternatively, `data` can also be a list of `numpy.array`s, in which case it is assumed that list elements are separate traces in the same space. In this *multi segment* (or *multi user*) case, Infostop finds stop locations that are shared by different segments.
 
 Solutions can be plotted using:
 
@@ -52,9 +54,11 @@ Solutions can be plotted using:
 >>> folmap.m
 ```
 
-Plotting this onto a map:
+Stop locations on a university campus, with points coloured by their label:
 
-![img](https://ulfaslak.com/files/infostop_example_geomap.png)
+![Points on a map of a university campus, coloured by stop location label](https://raw.githubusercontent.com/ulfaslak/infostop/master/docs/img/infostop_example_map.png)
+
+The [documentation](https://infostop.readthedocs.io) has runnable examples and explains every parameter.
 
 ## Advantages
 * **Simplicity**: At its core, the method works by two steps. (1) Reducing the location trace to the medians of each stationary event and (2) embedding the resulting locations into a network that connects locations that are within a user-defined distance and clustering that network.

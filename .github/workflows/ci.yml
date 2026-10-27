@@ -60,7 +60,8 @@ jobs:
         # installed wheel and not the source tree.
         working-directory: ${{ runner.temp }}
         run: |
-          python -c "import shutil, sys; shutil.copytree(sys.argv[1], 'tests')" "$GITHUB_WORKSPACE/tests"
+          # tests/test_docs.py runs the examples in docs/, so copy that too.
+          python -c "import shutil, sys; shutil.copytree(sys.argv[1], 'tests'); shutil.copytree(sys.argv[2], 'docs')" "$GITHUB_WORKSPACE/tests" "$GITHUB_WORKSPACE/docs"
           python - <<'EOF'
           import os, cpputils, infostop
           checkout = os.path.realpath(os.environ["GITHUB_WORKSPACE"])
