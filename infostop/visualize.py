@@ -18,6 +18,9 @@ class FoliumMap:
             Default is 'OpenStreetMap'. A good minimalist alternative is 'CartoDBpositron'.
         API_key : str
             Mapbox API key.
+        location : tuple of floats
+            Center of the map. Default is the median of `points`, so it must be given
+            if `points` is empty.
 
     Example
     -------
@@ -28,12 +31,20 @@ class FoliumMap:
     """
 
     def __init__(
-        self, points, labels, zoom_start=10, tiles="OpenStreetMap", API_key=None
+        self,
+        points,
+        labels,
+        zoom_start=10,
+        tiles="OpenStreetMap",
+        API_key=None,
+        location=None,
     ):
         self.points = points
         self.labels = labels
+        if location is None:
+            location = tuple(np.median(points, axis=0))
         self.m = folium.Map(
-            location=tuple(np.median(points, axis=0)),
+            location=location,
             zoom_start=zoom_start,
             tiles=tiles,
             API_key=API_key,
@@ -96,7 +107,7 @@ class FoliumMap:
                 of the data.
         """
         p = self.points
-        if subsampling < 1:
+        if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
             )
@@ -120,7 +131,7 @@ class FoliumMap:
                 renders a heatmap based on only 20 percent of the data.
         """
         p = self.points
-        if subsampling < 1:
+        if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
             )
@@ -147,7 +158,7 @@ def plot_map(
 ):
     """Load Folium map to display the data and fit.
 
-    Note: `plot_map` only works if `distance_metric` is "havesine".
+    Note: `plot_map` only works if `distance_metric` is "haversine".
 
     Parameters
     ----------
@@ -192,15 +203,16 @@ def plot_map(
 
     Returns
     -------
-        folmap : folium.folium.Map
+        folmap : FoliumMap
+            The folium map is `folmap.m`.
 
     Example
     -------
         >>> # create model and fit it to data
         >>> model = Infostop()
-        >>> _ = model._fit_predict(traces)
+        >>> _ = model.fit_predict(traces)
         >>> # visualize result
-        >>> folmap = visualize.plot_map(model)
+        >>> folmap = plot_map(model)
         >>> folmap.m
     """
     assert hasattr(
@@ -217,30 +229,37 @@ def plot_map(
         "unique_stationary",
     ], 'Keyword argument `display_data` must be one of "all", "all_stationary", "all_nonstationary" and "unique_stationary".'
 
-    # If it's an instance of Infostop
-    if hasattr(model, "r1"):
-        if "all" in display_data:
-            data_unique, indices_unique = np.unique(
-                np.vstack(model._data)[:, :2], axis=0, return_index=True
-            )
-            labels_unique = np.hstack(model._coord_labels)[indices_unique]
-            if display_data == "all":
-                points = data_unique
-                labels = labels_unique
-            elif display_data == "all_stationary":
-                points = data_unique[labels_unique >= 0]
-                labels = labels_unique[labels_unique >= 0]
-            elif display_data == "all_nonstationary":
-                points = data_unique[labels_unique == -1]
-                labels = labels_unique[labels_unique == -1]
-        elif display_data == "unique_stationary":
-            points = model._stat_coords[model._stat_labels >= 0]
-            labels = model._stat_labels[model._stat_labels >= 0]
-
-    # If it's an instance of SpatialInfomap
-    else:
+    if display_data == "unique_stationary":
         points = model._stat_coords[model._stat_labels >= 0]
         labels = model._stat_labels[model._stat_labels >= 0]
+    else:
+        # If it's an instance of Infostop
+        if hasattr(model, "_r1"):
+            coords = np.vstack([coords_u[:, :2] for coords_u in model._data])
+            coord_labels = np.hstack(model.labels)
+
+        # If it's an instance of SpatialInfomap
+        else:
+            coords = model._data
+            coord_labels = model._labels
+
+        # Remove duplicate points, but keep a point once for every label it has
+        unique = np.unique(np.column_stack([coords, coord_labels]), axis=0)
+        data_unique, labels_unique = unique[:, :2], unique[:, 2].astype(int)
+        if display_data == "all":
+            points = data_unique
+            labels = labels_unique
+        elif display_data == "all_stationary":
+            points = data_unique[labels_unique >= 0]
+            labels = labels_unique[labels_unique >= 0]
+        elif display_data == "all_nonstationary":
+            points = data_unique[labels_unique == -1]
+            labels = labels_unique[labels_unique == -1]
+
+    # With nothing to show, center the map on the coordinates the model clustered
+    location = None
+    if len(points) == 0:
+        location = tuple(np.median(model._stat_coords, axis=0))
 
     folmap = FoliumMap(
         points=points,
@@ -248,6 +267,7 @@ def plot_map(
         zoom_start=zoom_start,
         tiles=tiles,
         API_key=API_key,
+        location=location,
     )
 
     if polygons:
