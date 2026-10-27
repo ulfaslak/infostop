@@ -1,5 +1,6 @@
+SHELL := /bin/bash
 .DEFAULT_GOAL := help
-.PHONY: env coverage deps test install build clean help
+.PHONY: coverage deps test install build clean help
 
 env:  ## Create a virtualenv in ./env
 	python3 -m venv env

@@ -72,7 +72,7 @@ Plotting this onto a map:
 ## Development notes
 We welcome contributions. Before you get started, you may want to read the notes below.
 
-You should **create a virtual environment**. In your local `infostop` folder, do:
+You should **create a virtual environment** with a Python from 3.9 to 3.14 (CI tests 3.9 and 3.14). `make env` uses the `python3` on your `PATH`. On Python 3.9 and 3.10 there are no Infomap wheels, so pip compiles Infomap, which needs a C++ compiler. In your local `infostop` folder, do:
 ```Bash
 $ make env
 $ source env/bin/activate
