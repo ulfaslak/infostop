@@ -175,6 +175,16 @@ def test_haversine_median_preserves_non_wrapped_longitudes():
     assert stat_coords[0][1] == pytest.approx(12.500015)
 
 
+def test_haversine_median_tracks_largest_gap_as_points_arrive():
+    longitudes = [179.9, -179.9, -20, 15, 179.8, -179.8, 180, -45, 0, 10]
+    coords = [[10.0, longitude] for longitude in longitudes]
+    stat_coords, event_map = events(coords, r1=22_000_000, metric="haversine")
+
+    assert event_map == [0] * len(longitudes)
+    assert len(stat_coords) == 1
+    assert stat_coords[0][1] == pytest.approx(-112.4)
+
+
 @pytest.mark.parametrize("gap, joined", [(600, True), (601, False)])
 def test_time_gap_around_max_time_between(gap, joined):
     coords = [[0, 0, 0], [0, 0, 300], [0, 0, 300 + gap]]
