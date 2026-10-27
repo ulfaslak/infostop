@@ -82,7 +82,7 @@ def infomap_communities(
         enumerate(node_idx_neighbors), total=len(node_idx_neighbors)
     ):
         if len(neighbors) > 1:
-            network.addNode(infomap_idx)
+            network.add_node(infomap_idx)
             name_map_inverse[infomap_idx] = n
             name_map[n] = infomap_idx
             infomap_idx += 1
@@ -104,7 +104,7 @@ def infomap_communities(
             enumerate(node_idx_neighbors), total=len(node_idx_neighbors)
         ):
             for neighbor in neighbors[neighbors > node]:
-                network.addLink(
+                network.add_link(
                     name_map[node],
                     name_map[neighbor],
                     max(counts[node], counts[neighbor]),
@@ -121,7 +121,7 @@ def infomap_communities(
             ):
                 if distance_metric == "haversine":
                     distance *= 6371000
-                network.addLink(
+                network.add_link(
                     name_map[node],
                     name_map[neighbor],
                     max(counts[node], counts[neighbor])
@@ -137,12 +137,14 @@ def infomap_communities(
     if verbose:
         print("    ... running Infomap...", end=" ")
     if len(name_map) > 0:
-        network.run()
+        result = network.run()
+        # Infomap >= 2.14 returns the result from `run`, older versions keep it on `network`
+        modules = network.get_modules() if result is None else result.modules()
         # Convert to node-community dict format
         partition = dict(
             [
                 (name_map_inverse[infomap_idx], module)
-                for infomap_idx, module in network.modules
+                for infomap_idx, module in modules.items()
             ]
         )
         if verbose:
