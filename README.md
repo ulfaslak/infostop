@@ -42,7 +42,9 @@ A stop location solution can be obtained using:
 >>> labels = model.fit_predict(data)
 ```
 
-Alternatively, `data` can also be a list of `numpy.array`s, in which case it is assumed that list elements are seperate traces in the same space. In this *multi segment* (or *multi user*) case, Infostop finds stop locations that are shared by different segments.
+`labels` has one integer per row of `data`: the label of the stop location the point belongs to, or `-1` if the point is not part of a stop (for example, it was recorded while moving). With the default `distance_metric="haversine"`, the distances `r1` and `r2` are in meters. The time parameters `min_staying_time` and `max_time_between` are in the units of the time column, and their defaults assume seconds.
+
+Alternatively, `data` can also be a list of `numpy.array`s, in which case it is assumed that list elements are separate traces in the same space. In this *multi segment* (or *multi user*) case, Infostop finds stop locations that are shared by different segments.
 
 Solutions can be plotted using:
 
@@ -52,9 +54,11 @@ Solutions can be plotted using:
 >>> folmap.m
 ```
 
-Plotting this onto a map:
+Stop locations on a university campus, with points coloured by their label:
 
-![img](https://ulfaslak.com/files/infostop_example_geomap.png)
+![Points on a map of a university campus, coloured by stop location label](https://raw.githubusercontent.com/ulfaslak/infostop/master/docs/img/infostop_example_map.png)
+
+The [documentation](https://infostop.readthedocs.io) has runnable examples and explains every parameter.
 
 ## Advantages
 * **Simplicity**: At its core, the method works by two steps. (1) Reducing the location trace to the medians of each stationary event and (2) embedding the resulting locations into a network that connects locations that are within a user-defined distance and clustering that network.
@@ -65,12 +69,22 @@ Plotting this onto a map:
 ## Installation
 `pip install infostop`
 
+**macOS without Infomap wheels** (Intel Macs, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, which needs OpenMP. Run `brew install libomp` first, or install with `OPENMP=0 pip install infostop` to build Infomap without OpenMP.
+
+**Reproducing earlier results.** Labels for points in ambiguous places, such as stops that lie close together, can differ between Infomap versions and between operating systems. Points labeled `-1` do not change. To reproduce earlier results, pin both `infostop` and `infomap` and use the same operating system. infostop 0.1.9 used `infomap==1.0.6`.
+
 ## Development notes
 We welcome contributions. Before you get started, you may want to read the notes below.
 
-You should **create a virtual environment**. In your local `infostop` folder, do:
+You should **create a virtual environment** with a Python from 3.9 to 3.14 (CI tests 3.9 and 3.14). `make env` uses the `python3` on your `PATH`. On Python 3.9 and 3.10 there are no Infomap wheels, so pip compiles Infomap, which needs a C++ compiler. In your local `infostop` folder, do:
 ```Bash
 $ make env
+$ source env/bin/activate
+```
+
+**Install the development tools** (`pytest`, `black`, `coverage`, `build`) and the dependencies:
+```Bash
+(env) $ make deps
 ```
 
 **Install `infostop`** into your virtual environment.
@@ -78,12 +92,13 @@ Do this by running:
 ```Bash
 (env) $ make install
 ```
-This command will also delete any pre-existing installation of Infostop, so you will probably want to run it after each code update.
+This command builds the package and replaces any pre-existing installation of Infostop, so you will probably want to run it after each code update.
 
 **Run tests**:
 ```Bash
 (env) $ make test
 ```
+Like CI, this runs the tests from a temporary folder against the installed package (not the source folder), so run `make install` first.
 
 **Check test coverage**:
 ```Bash
@@ -118,5 +133,5 @@ Finally, push first the tags and then your commits.
 When mergining a PR with a tagged commit, the PyPI deployment action is triggered, and the new version of Infostop becomes publicly available shortly thereafter.
 
 
-[build-image]: https://github.com/ulfaslak/infostop/actions/workflows/deploy.yml/badge.svg
-[build-url]: https://github.com/ulfaslak/infostop/actions/workflows/deploy.yml
+[build-image]: https://github.com/ulfaslak/infostop/actions/workflows/ci.yml/badge.svg
+[build-url]: https://github.com/ulfaslak/infostop/actions/workflows/ci.yml
