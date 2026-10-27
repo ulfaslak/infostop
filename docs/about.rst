@@ -12,24 +12,32 @@ The method is described in `Aslak & Alessandretti (2020)`_.
 Quick example
 -------------
 
-Ten GPS fixes at home, three on the way to work, and ten at work:
+A day in GPS fixes: ten at home, three on the way to work, ten at work, three
+on the way back, and ten at home again:
 
 .. code-block:: pycon
 
    >>> import numpy as np
    >>> from infostop import Infostop
    >>> rng = np.random.default_rng(0)
-   >>> home = [55.6761, 12.5683] + rng.normal(0, 1e-5, (10, 2))
-   >>> work = [55.6867, 12.5700] + rng.normal(0, 1e-5, (10, 2))
-   >>> trip = np.linspace([55.6761, 12.5683], [55.6867, 12.5700], 5)[1:-1]
-   >>> data = np.vstack([home, trip, work])
+   >>> home = np.array([55.6761, 12.5683])
+   >>> work = np.array([55.6867, 12.5700])
+   >>> def stay(place):  # 10 fixes within a few meters of `place`
+   ...     return place + rng.normal(0, 1e-5, (10, 2))
+   >>> def trip(a, b):  # 3 fixes on the way from `a` to `b`
+   ...     return np.linspace(a, b, 5)[1:-1]
+   >>> data = np.vstack([
+   ...     stay(home), trip(home, work), stay(work), trip(work, home), stay(home)
+   ... ])
    >>> Infostop().fit_predict(data)
-   array([ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1, -1, -1,  1,  1,  1,  1,
-           1,  1,  1,  1,  1,  1])
+   array([ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1, -1, -1, -1,  2,  2,  2,  2,
+           2,  2,  2,  2,  2,  2, -1, -1, -1,  1,  1,  1,  1,  1,  1,  1,  1,
+           1,  1])
 
-The points at home get one label, the points at work get another, and the
-three points on the way get ``-1``. :doc:`usage/usage` explains the input
-format, the parameters and the other tools in the package.
+Both stays at home get the same label, work gets another, and the points on
+the way get ``-1``. Labels are only IDs: the numbers themselves carry no
+meaning. :doc:`usage/usage` explains the input format, the parameters and the
+other tools in the package.
 
 The figure shows points on a university campus, coloured by their stop
 location label:

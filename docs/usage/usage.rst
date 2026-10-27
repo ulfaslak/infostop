@@ -67,9 +67,10 @@ label per input row:
            2,  2,  2,  2,  2,  2, -1, -1, -1,  1,  1,  1,  1,  1,  1,  1,  1,
            1,  1])
 
-Both visits to home get the same label, and work gets another. Label numbers
-are arbitrary IDs, so don't read meaning into their values or their order.
-They can also differ between versions of Infomap.
+Both visits to home get the same label, and work gets another. Labels are
+non-negative integers that only identify stop locations: their values and
+their order carry no meaning. For traces where the stop locations are
+ambiguous, the result can also differ between versions of Infomap.
 
 The label ``-1`` marks points that are not part of any stop. A point gets
 ``-1`` if it is in no stationary event: the person was moving, or they stayed
@@ -158,17 +159,26 @@ columns: either all with timestamps or all without.
 .. code-block:: pycon
 
    >>> alice = data
-   >>> bob = np.vstack([stay(work, 0), trip(work, shop, 600), stay(shop, 780)])
+   >>> bob = np.vstack([
+   ...     stay(work, 0),
+   ...     trip(work, shop, 600),
+   ...     stay(shop, 780),
+   ...     trip(shop, work, 1380),
+   ...     stay(work, 1560),
+   ... ])
    >>> labels_alice, labels_bob = Infostop().fit_predict([alice, bob])
    >>> labels_alice
-   array([ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1, -1, -1, -1,  2,  2,  2,  2,
-           2,  2,  2,  2,  2,  2, -1, -1, -1,  1,  1,  1,  1,  1,  1,  1,  1,
-           1,  1])
+   array([ 2,  2,  2,  2,  2,  2,  2,  2,  2,  2, -1, -1, -1,  1,  1,  1,  1,
+           1,  1,  1,  1,  1,  1, -1, -1, -1,  2,  2,  2,  2,  2,  2,  2,  2,
+           2,  2])
    >>> labels_bob
-   array([ 2,  2,  2,  2,  2,  2,  2,  2,  2,  2, -1, -1, -1,  3,  3,  3,  3,
-           3,  3,  3,  3,  3,  3])
+   array([ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1, -1, -1, -1,  3,  3,  3,  3,
+           3,  3,  3,  3,  3,  3, -1, -1, -1,  1,  1,  1,  1,  1,  1,  1,  1,
+           1,  1])
 
-Work has label ``2`` in both traces.
+Work has label ``1`` in both traces. Alice's home now has label ``2``, not
+``1`` as in the single-trace example: labels identify places within one fit
+only.
 
 Stop location medians
 ---------------------
@@ -234,9 +244,11 @@ map. Elsewhere, save it as an HTML file and open that in a browser:
 
 The ``display_data`` parameter selects which points to draw. The default,
 ``"unique_stationary"``, draws the medians of the stationary events that
-belong to a stop. ``"all"`` draws every input point, ``"all_stationary"``
-only the input points that belong to a stop, and ``"all_nonstationary"`` only
-the input points labeled ``-1``.
+belong to a stop (for :class:`~infostop.SpatialInfomap`, the input points
+that are not labeled ``-1``). ``"all"`` draws every input point,
+``"all_stationary"`` only the input points that belong to a stop, and
+``"all_nonstationary"`` only the input points labeled ``-1``. Each location
+is drawn once.
 
 .. note::
 
@@ -276,12 +288,12 @@ clusters that network with Infomap. The input is an array with 2 columns.
 
    >>> from infostop import SpatialInfomap
    >>> points = np.vstack([
-   ...     rng.normal(0, 1, (5, 2)),         # 5 points around (0, 0)
-   ...     rng.normal([50, 50], 1, (5, 2)),  # 5 points around (50, 50)
-   ...     [[100, 0]],                       # 1 point on its own
+   ...     rng.normal(0, 0.5, (6, 2)),         # 6 points around (0, 0)
+   ...     rng.normal([50, 50], 0.5, (3, 2)),  # 3 points around (50, 50)
+   ...     [[100, 0]],                         # 1 point on its own
    ... ])
    >>> SpatialInfomap(r2=5, distance_metric="euclidean").fit_predict(points)
-   array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3])
+   array([1, 1, 1, 1, 1, 1, 2, 2, 2, 3])
 
 The point on its own has no neighbor within ``r2``. It gets its own label
 because ``label_singleton=True`` is the default. With
@@ -292,7 +304,7 @@ because ``label_singleton=True`` is the default. With
    >>> SpatialInfomap(
    ...     r2=5, distance_metric="euclidean", label_singleton=False
    ... ).fit_predict(points)
-   array([ 1,  1,  1,  1,  1,  2,  2,  2,  2,  2, -1])
+   array([ 1,  1,  1,  1,  1,  1,  2,  2,  2, -1])
 
 Large datasets
 --------------
