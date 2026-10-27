@@ -1,0 +1,17 @@
+# Settings for the wheels that .github/workflows/release.yml builds.
+# There is no [build-system] table, so pip and build use setuptools with setup.py.
+
+[tool.cibuildwheel]
+# The supported CPython versions, the same range as the CI test matrix.
+# Free-threaded (cp314t) and CPython 3.15 builds are left out: Infomap has no
+# wheels for them yet.
+build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+# Infomap has no musllinux wheels. On musl systems (Alpine), pip builds from the sdist.
+skip = ["*-musllinux_*"]
+# Each CI runner builds for its own architecture only.
+archs = ["native"]
+# Test each wheel: cibuildwheel installs it and runs the tests from a temporary
+# folder that has a copy of tests/ and no source tree.
+test-requires = ["pytest"]
+test-sources = ["tests"]
+test-command = "python -m pytest -ra tests"
