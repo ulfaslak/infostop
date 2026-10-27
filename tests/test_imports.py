@@ -6,20 +6,25 @@ import infostop
 
 # Import in a fresh interpreter: warnings raised while a module is first imported do
 # not repeat once it is already imported, and this test session imports infostop.
+# The directory holding the infostop under test is put first on `sys.path`, so the
+# subprocess cannot pick up another installed copy (e.g. with PYTHONSAFEPATH=1).
 IMPORT_WITH_DEPRECATIONS_AS_ERRORS = """
+import sys
 import warnings
-warnings.filterwarnings("error", category=DeprecationWarning, module="infostop")
+sys.path.insert(0, sys.argv[1])
+for category in (DeprecationWarning, PendingDeprecationWarning):
+    warnings.filterwarnings("error", category=category, module="infostop")
 import infostop
+print(infostop.__file__)
 """
 
 
-def test_import_uses_no_deprecated_api():
-    # Run next to the infostop under test, so the subprocess imports the same copy
+def test_import_warns_no_deprecation():
     root = os.path.dirname(os.path.dirname(os.path.abspath(infostop.__file__)))
     result = subprocess.run(
-        [sys.executable, "-c", IMPORT_WITH_DEPRECATIONS_AS_ERRORS],
-        cwd=root,
+        [sys.executable, "-c", IMPORT_WITH_DEPRECATIONS_AS_ERRORS, root],
         capture_output=True,
         text=True,
     )
     assert result.returncode == 0, result.stderr
+    assert os.path.samefile(result.stdout.strip(), infostop.__file__)
