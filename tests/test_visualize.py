@@ -5,7 +5,8 @@ import folium
 import numpy as np
 import pytest
 
-from infostop import Infostop, SpatialInfomap, plot_map
+from infostop import Infostop, SpatialInfomap, plot_map, visualize
+from infostop.visualize import FoliumMap
 
 DISPLAY_DATA = ["all", "all_stationary", "all_nonstationary", "unique_stationary"]
 
@@ -301,3 +302,34 @@ def test_plot_map_api_key_unused_by_other_tiles():
     model, _, _ = _fitted("infostop")
     html = plot_map(model, API_key="my-token").m.get_root().render()
     assert "my-token" not in html
+
+
+def test_plot_map_passes_plain_floats_to_folium(monkeypatch):
+    # folium 0.12-0.13 cannot take a numpy array as a marker location, and folium
+    # 0.7-0.8 write numpy 2 floats into the page as `np.float64(...)`
+    passed = []
+    circle_marker, heatmap = folium.CircleMarker, visualize.HeatMap
+    monkeypatch.setattr(
+        folium,
+        "CircleMarker",
+        lambda location, **kw: passed.append(location) or circle_marker(location, **kw),
+    )
+    monkeypatch.setattr(
+        visualize,
+        "HeatMap",
+        lambda data, **kw: passed.extend(data) or heatmap(data, **kw),
+    )
+    model, _, _ = _fitted("infostop")
+    folmap = plot_map(model, display_data="all", scatter=True)
+    # First the markers, then the heatmap, each at the shown points
+    assert passed == 2 * folmap.points.tolist()
+    assert all(type(value) is float for location in passed for value in location)
+    assert "np.float64" not in folmap.m.get_root().render()
+
+
+def test_folium_map_with_points_as_a_list():
+    points = [[55.70, 12.50], [55.71, 12.52], [55.70, 12.51]]
+    folmap = FoliumMap(points, np.array([0, 1, 0]))
+    folmap.render_points(subsampling=0.5)
+    folmap.render_heatmap(subsampling=0.5)
+    assert "<html>" in folmap.m.get_root().render()
