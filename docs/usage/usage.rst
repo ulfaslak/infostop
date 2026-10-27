@@ -232,15 +232,16 @@ map. Elsewhere, save it as an HTML file and open that in a browser:
    folmap.m.save("stop_locations.html")
 
 The ``display_data`` parameter selects which points to draw. The default,
-``"unique_stationary"``, draws the medians of the stationary events. The other
-options, ``"all"``, ``"all_stationary"`` and ``"all_nonstationary"``, draw
-the input points.
+``"unique_stationary"``, draws the medians of the stationary events that
+belong to a stop. ``"all"`` draws every input point, ``"all_stationary"``
+only the input points that belong to a stop, and ``"all_nonstationary"`` only
+the input points labeled ``-1``.
 
 .. note::
 
    Until `issue #35 <https://github.com/ulfaslak/infostop/issues/35>`_ is
-   fixed, ``display_data`` has no effect for :class:`~infostop.Infostop`
-   models: the map always shows the event medians.
+   fixed, ``display_data`` has no effect: the map always shows what
+   ``"unique_stationary"`` shows.
 
 .. _euclidean:
 
