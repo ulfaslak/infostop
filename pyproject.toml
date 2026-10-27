@@ -13,9 +13,10 @@ skip = ["*-musllinux_*"]
 # Each CI runner builds for its own architecture only.
 archs = ["native"]
 # Test each wheel: cibuildwheel installs it and runs the tests from a temporary
-# folder that has a copy of tests/ and no source tree.
+# folder that has a copy of tests/ and no source tree. tests/test_docs.py runs
+# the examples in docs/, so docs/ is copied too.
 test-requires = ["pytest"]
-test-sources = ["tests"]
+test-sources = ["tests", "docs"]
 test-command = "python -m pytest -ra tests"
 
 # Infomap has no macOS x86_64 wheels, and its source build (2.10 and later)
