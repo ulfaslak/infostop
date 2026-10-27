@@ -28,10 +28,12 @@ def make_trace(seed, places, n_per_visit):
     return np.vstack(parts)
 
 
-# Two users in different neighbourhoods (about 10 km apart), so they share no stops
+# Two users in different neighbourhoods (about 10 km apart), so they share no stops.
+# The last visit of WITH_TIME lasts 120 s, under the default `min_staying_time`: it
+# is a stop only if the time column is ignored.
 A, B, C = (55.70, 12.50), (55.71, 12.52), (55.70, 12.53)
 D, E = (55.80, 12.40), (55.81, 12.42)
-WITH_TIME = make_trace(0, [A, B, A, C], [30, 20, 25, 15])
+WITH_TIME = make_trace(0, [A, B, A, C, A], [30, 20, 25, 15, 3])
 WITHOUT_TIME = make_trace(1, [D, E, D, E, D], [20, 30, 10, 25, 15])[:, :2]
 
 
@@ -63,8 +65,29 @@ def test_mixed_column_users_match_separate_fits(
         alone = Infostop(**kw).fit_predict(trace)
         assert same_partition(labels_u, alone)
         assert -1 in labels_u and len(set(labels_u) - {-1}) >= 1
+        if trace.shape[1] == 3:  # the time column changes this user's labels
+            assert not same_partition(alone, Infostop(**kw).fit_predict(trace[:, :2]))
     # No stop is shared between the two neighbourhoods
     assert not (set(labels[0]) & set(labels[1])) - {-1}
+
+
+def test_stop_shared_by_user_with_and_user_without_time():
+    # Rows: A 0-29 | moving | B 40-59 | moving | A 70-94
+    with_time = make_trace(2, [A, B, A], [30, 20, 25])
+    # Rows: A 0-19 | moving | C 30-59 | moving | A 70-84
+    without_time = make_trace(3, [A, C, A], [20, 30, 15])[:, :2]
+
+    labels_t, labels_u = Infostop().fit_predict([with_time, without_time])
+
+    def stops(rows):  # a visit's edge point can be -1 when noise exceeds `r1`
+        return set(rows) - {-1}
+
+    at_a = stops(labels_t[:30]) | stops(labels_t[70:])
+    at_a |= stops(labels_u[:20]) | stops(labels_u[70:])
+    assert len(at_a) == 1  # one shared stop at A
+    (b,), (c,) = stops(labels_t[40:60]), stops(labels_u[30:60])
+    assert len({*at_a, b, c}) == 3  # B and C are separate stops
+    assert b not in labels_u and c not in labels_t
 
 
 def test_mixed_column_users_nan_count():
