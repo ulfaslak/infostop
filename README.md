@@ -42,7 +42,9 @@ A stop location solution can be obtained using:
 >>> labels = model.fit_predict(data)
 ```
 
-Alternatively, `data` can also be a list of `numpy.array`s, in which case it is assumed that list elements are seperate traces in the same space. In this *multi segment* (or *multi user*) case, Infostop finds stop locations that are shared by different segments.
+`labels` has one integer per row of `data`: the label of the stop location the point belongs to, or `-1` if the point is not part of a stop (for example, it was recorded while moving). With the default `distance_metric="haversine"`, the distances `r1` and `r2` are in meters. The time parameters `min_staying_time` and `max_time_between` are in the units of the time column, and their defaults assume seconds.
+
+Alternatively, `data` can also be a list of `numpy.array`s, in which case it is assumed that list elements are separate traces in the same space. In this *multi segment* (or *multi user*) case, Infostop finds stop locations that are shared by different segments.
 
 Solutions can be plotted using:
 
@@ -52,9 +54,11 @@ Solutions can be plotted using:
 >>> folmap.m
 ```
 
-Plotting this onto a map:
+Stop locations on a university campus, with points coloured by their label:
 
-![img](https://ulfaslak.com/files/infostop_example_geomap.png)
+![Points on a map of a university campus, coloured by stop location label](https://raw.githubusercontent.com/ulfaslak/infostop/master/docs/img/infostop_example_map.png)
+
+The [documentation](https://infostop.readthedocs.io) has runnable examples and explains every parameter.
 
 ## Advantages
 * **Simplicity**: At its core, the method works by two steps. (1) Reducing the location trace to the medians of each stationary event and (2) embedding the resulting locations into a network that connects locations that are within a user-defined distance and clustering that network.
@@ -65,7 +69,12 @@ Plotting this onto a map:
 ## Installation
 `pip install infostop`
 
-**macOS without Infomap wheels** (Intel Macs, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, which needs OpenMP. Run `brew install libomp` first, or install with `OPENMP=0 pip install infostop` to build Infomap without OpenMP.
+**macOS without Infomap wheels** (Intel Macs, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, and Infomap's build needs OpenMP unless you switch it off ([#77](https://github.com/ulfaslak/infostop/issues/77)). Install Infomap without OpenMP first, then infostop:
+```Bash
+$ OPENMP=0 pip install infomap
+$ pip install infostop
+```
+If you use Homebrew and your Python runs natively (not an x86_64 Python under Rosetta on Apple Silicon), `brew install libomp` before `pip install infostop` also works.
 
 **Reproducing earlier results.** Labels for points in ambiguous places, such as stops that lie close together, can differ between Infomap versions and between operating systems. Points labeled `-1` do not change. To reproduce earlier results, pin both `infostop` and `infomap` and use the same operating system. infostop 0.1.9 used `infomap==1.0.6`.
 
@@ -118,15 +127,21 @@ If you use Jupyter notebooks, you can install the virtual environment into Jupyt
 This lets you select the virtual environment as a kernel in a Jupyter notebook.
 
 **Versioning and deployment to PyPI**
-If your update should trigger a version increment and package rerelease, please execute the `increment_version.py` script ONCE and [tag](https://git-scm.com/book/en/v2/Git-Basics-Tagging) your final commit. After running the `commit` command, to tag the commit you would run something like:
+Releases are made by the maintainer. A version number on PyPI can never be reused, so a release cannot be undone.
+
+1. On an up-to-date `master` that has everything you want to release, execute the `increment_version.py` script ONCE. It increments the last number of `__version__` in `infostop/metadata.py`. Commit the change.
+2. [Tag](https://git-scm.com/book/en/v2/Git-Basics-Tagging) that commit with `v` followed by the version in `infostop/metadata.py`. For example, if it says `0.1.12`:
 ```Bash
-(env) $ git tag -a v1.0.11 -m "Infostop version 1.0.11"
+(env) $ git tag -a v0.1.12 -m "Infostop version 0.1.12"
 ```
-Finally, push first the tags and then your commits.
+3. Push the commit and the tag together:
 ```Bash
-(env) $ git push --tags && git push
+(env) $ git push --atomic origin master v0.1.12
 ```
-When mergining a PR with a tagged commit, the PyPI deployment action is triggered, and the new version of Infostop becomes publicly available shortly thereafter.
+
+Pushing a `v*` tag starts the [Release workflow](https://github.com/ulfaslak/infostop/blob/master/.github/workflows/release.yml). It builds the sdist and the wheels (Linux x86_64 and aarch64, macOS x86_64 and arm64, Windows x86_64, for each supported Python version), runs the tests against each wheel, and then uploads all of them to PyPI with [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so no API token is stored on GitHub. It uploads nothing if the tag is not `v` + `__version__`, if the tagged commit is not on `master`, or if a build or a test fails. Every PR builds and tests the same wheels, so a broken build shows up before the release.
+
+Do not upload the output of `make build` by hand: on Linux it is a `linux_x86_64` wheel, which PyPI rejects.
 
 
 [build-image]: https://github.com/ulfaslak/infostop/actions/workflows/ci.yml/badge.svg
