@@ -43,6 +43,13 @@ def test_infostop_nan_message_counts_all_columns():
         Infostop().fit_predict(trace)
 
 
+def test_infostop_nan_message_counts_values_not_rows():
+    trace = make_trace()
+    trace[5, :] = np.nan
+    with pytest.raises(AssertionError, match=nan_message(3)):
+        Infostop().fit_predict(trace)
+
+
 def test_infostop_nan_message_counts_across_users():
     trace_a, trace_b = make_trace(0), make_trace(1)
     trace_a[5, 0] = np.nan
@@ -53,7 +60,7 @@ def test_infostop_nan_message_counts_across_users():
 
 def test_spatial_infomap_nan_message_gives_count():
     coords = make_trace()[:, :2]
-    coords[5, 0] = np.nan
+    coords[5, :] = np.nan
     coords[6, 1] = np.nan
-    with pytest.raises(AssertionError, match=nan_message(2)):
+    with pytest.raises(AssertionError, match=nan_message(3)):
         SpatialInfomap().fit_predict(coords)

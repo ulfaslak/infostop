@@ -577,7 +577,7 @@ class SpatialInfomap:
     def _data_assertions(self, data):
         assert not np.any(
             np.isnan(data)
-        ), f"There are {np.isnan(data).sum()} NaN values in the input data."
+        ), f"There are {np.count_nonzero(np.isnan(data))} NaN values in the input data."
         assert data.shape[1] == 2, "Number of columns must be 2"
         if self._distance_metric == "haversine":
             assert (
