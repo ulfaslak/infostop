@@ -180,7 +180,7 @@ def label_network(
             Non connected nodes.
         label_singleton: bool
             If True, give each node that has no neighbor within `r2` its own label. If False,
-            label them as outliers (-1).
+            label them as outliers (-1), unless their count is above 1.
 
     Returns
     -------
@@ -190,7 +190,8 @@ def label_network(
             Infomap's module ids, which start at 1. With `label_singleton=True`, nodes with no
             neighbor get the next labels after the largest module id, so if no node has a
             neighbor (and Infomap is not run), labels start at 0. If `label_singleton=False`,
-            coordinates with no neighbors within distance `r2` are labeled -1.
+            coordinates with no neighbors within distance `r2` and a count of 1 are labeled -1;
+            those with a count above 1 get the next labels after the largest module id.
     """
     # Infer the partition with infomap. Partiton looks like `{node: community, ...}`
     partition, singleton_nodes = infomap_communities(
@@ -202,18 +203,22 @@ def label_network(
         verbose,
     )
 
+    # Without `label_singleton`, a singleton is still a stop location if its count is
+    # above 1: several visits (or points) that share one coordinate
+    if not label_singleton:
+        singleton_nodes = [n for n in singleton_nodes if counts[n] > 1]
+
     # Add new labels to each singleton point (stop that was further than r2 from
     # any other point and thus was not represented in the network)
-    if label_singleton:
-        max_label = max(partition.values(), default=-1)
-        partition.update(
-            dict(
-                zip(
-                    singleton_nodes,
-                    range(max_label + 1, max_label + 1 + len(singleton_nodes)),
-                )
+    max_label = max(partition.values(), default=-1)
+    partition.update(
+        dict(
+            zip(
+                singleton_nodes,
+                range(max_label + 1, max_label + 1 + len(singleton_nodes)),
             )
         )
+    )
 
     # Cast the partition as a vector of labels like `[0, 1, 0, 3, 0, 0, 2, ...]`
     return np.array(
