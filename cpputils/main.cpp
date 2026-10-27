@@ -89,6 +89,10 @@ std::tuple<std::vector<std::vector<double>>, std::vector<int>> get_stationary_ev
 	int N = input_buf.shape[0];
 	int M = input_buf.shape[1];
 
+	// An empty trace has no stop events (and no row 0 to start the first group from)
+	if (N == 0)
+		return std::make_tuple(std::vector<std::vector<double>>(), std::vector<int>());
+
 	// Output variables
 	std::vector<std::vector<double>> stat_coords;  // stat_coords (py: list of lists)
 	std::vector<int> event_map(N);                 // event_map   (py: list)
