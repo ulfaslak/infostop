@@ -11,11 +11,13 @@ It returns `(stat_coords, event_map)`: the median of each stop event, and for ea
 point the index of its stop event or -1.
 """
 
+import os
 import subprocess
 import sys
 
 import numpy as np
 import pytest
+from numpy.lib.stride_tricks import as_strided
 
 import cpputils
 
@@ -43,19 +45,24 @@ def events(
 
 @pytest.mark.parametrize("n_cols", [2, 3])
 def test_zero_points(n_cols):
+    # Correct output, but only by luck: the C++ code still reads row 0 (#48).
     assert events(np.empty((0, n_cols))) == ([], [])
 
 
 @pytest.mark.xfail(
     strict=True,
-    reason="reads row 0 of an empty input (out of bounds); "
+    raises=AssertionError,
+    reason="reads rows 0 and -1 of an empty input (out of bounds); "
     "https://github.com/ulfaslak/infostop/issues/48",
 )
-def test_zero_points_reads_nothing():
-    # A zero-row view into a non-empty array, so the out-of-bounds read hits valid
-    # memory and shows up as a stop event made from a row that is not in the input.
-    parent = np.array([[1.0, 2.0], [3.0, 4.0]])
-    assert events(parent[:0], min_size=0) == ([], [])
+@pytest.mark.parametrize("n_cols", [2, 3])
+def test_zero_points_reads_nothing(n_cols):
+    # A zero-row view into the middle of a larger array, so the out-of-bounds reads
+    # hit valid memory and show up as a stop event made from rows not in the input.
+    # With 3 columns the last-group check also reads row -1 (time 1000).
+    parent = np.array([[9.0, 9.0, 1000.0], [1.0, 2.0, 0.0], [3.0, 4.0, 0.0]])
+    empty = as_strided(parent[1:, :n_cols], shape=(0, n_cols))
+    assert events(empty, min_size=0) == ([], [])
 
 
 def test_one_point():
@@ -113,10 +120,12 @@ def test_distance_exactly_r1_joins():
 
 
 def test_distance_is_measured_to_the_group_median():
-    # The third point is 8 from the previous point and 16 from the first, but what
-    # counts is its distance to the median of the group so far (y = 4).
-    assert events([[0, 0], [0, 8], [0, 14]]) == ([[0.0, 8.0]], [0, 0, 0])
+    # The third point is within r1 of the previous point (8) but not of the first
+    # point (16 and 13), and what counts is the median of the group so far (y = 4).
+    assert events([[0, 0], [0, 8], [0, 13]]) == ([[0.0, 8.0]], [0, 0, 0])
     assert events([[0, 0], [0, 8], [0, 16]]) == ([[0.0, 4.0]], [0, 0, -1])
+    # The last point is 9 from the median (y = 1) and 11 from the mean (y = 3).
+    assert events([[0, 0], [0, 1], [0, 8], [0, -8]]) == ([[0.0, 0.5]], [0, 0, 0, 0])
 
 
 @pytest.mark.parametrize("metres, joined", [(9.9, True), (10.1, False)])
@@ -171,6 +180,7 @@ def test_integer_and_list_input_match_float_array():
 
 @pytest.mark.xfail(
     strict=True,
+    raises=pytest.fail.Exception,
     reason="column counts other than 2 and 3 are not rejected; "
     "https://github.com/ulfaslak/infostop/issues/49",
 )
@@ -182,17 +192,30 @@ def test_wrong_column_count_raises(n_cols):
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason="an unknown distance_metric calls an uninitialised function pointer; "
     "https://github.com/ulfaslak/infostop/issues/49",
 )
 def test_unknown_metric_raises():
     # In a subprocess: the call is undefined behaviour and may crash the process.
+    # The child exits 0 if it raises ValueError and 3 if nothing is raised.
     code = (
         "import sys, numpy as np, cpputils\n"
         "try:\n"
         "    cpputils.get_stationary_events(np.zeros((3, 2)), 10, 2, 300, 86400, 'Euclidean')\n"
         "except ValueError:\n"
         "    sys.exit(0)\n"
-        "sys.exit(1)\n"
+        "sys.exit(3)\n"
     )
-    assert subprocess.run([sys.executable, "-c", code]).returncode == 0
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
+    child = subprocess.run(
+        [sys.executable, "-c", code],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if child.returncode not in (0, 3) and child.returncode > 0:
+        # A Python error in the child (e.g. cpputils not importable), not the bug.
+        raise RuntimeError(child.stderr)
+    assert child.returncode == 0

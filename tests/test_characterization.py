@@ -7,6 +7,11 @@ relabelling by order of first occurrence. Positions labelled `-1` must match exa
 Each pinned partition is written as runs of `(label, count)` over the trace, so it
 reads like the trace design: a stop location is one run, a walk between stops is
 a run of `-1`.
+
+Every trace is designed so that its partition does not depend on Infomap's random
+number stream. On borderline data (stops that overlap within `r2`), Infomap 2.x
+gives different labels on macOS and on Linux, and different Infomap versions give
+different labels, so borderline cases are deliberately not pinned here.
 """
 
 import numpy as np
@@ -194,10 +199,15 @@ def test_infostop_weighted_keeps_separate_stops(metric, weight_exponent):
     assert partition(model.fit_predict(trace)) == SINGLE_WITH_TIME
 
 
-# Four visits at x=0 and four at x=6, all within `r2` of each other, each followed
-# by a visit to D. Weighting links by `1 / distance ** weight_exponent` makes the
-# links within each spot stronger than the links across.
-CLOSE_VISITS = [v for x in (0, 6) * 4 for v in (((x, 0), 10), (D, 10))]
+# Two triangles of spots with 1 m sides, 4 m apart, each spot visited once and
+# followed by a visit to D. The trace has no noise, so every stop event sits exactly
+# on its spot. All six spots are within `r2` of each other. Weighting links by
+# `1 / distance ** weight_exponent` makes links within a triangle stronger than
+# links across; the split happens between exponent 1 and 2 for gaps of about 3 to
+# 5.5 m, so 4 m keeps a margin on both sides.
+TRIANGLE = [(0, 0), (1, 0), (0.5, 0.87)]
+TRIANGLE_SPOTS = TRIANGLE + [(x + 4, y) for x, y in TRIANGLE]
+TRIANGLE_VISITS = [v for spot in TRIANGLE_SPOTS for v in ((spot, 10), (D, 10))]
 
 
 @pytest.mark.parametrize("metric", ["haversine", "euclidean"])
@@ -208,21 +218,24 @@ CLOSE_VISITS = [v for x in (0, 6) * 4 for v in (((x, 0), 10), (D, 10))]
 def test_infostop_weighting_splits_close_spots(
     metric, weighted, weight_exponent, split
 ):
-    trace = make_trace(4, CLOSE_VISITS, metric)
+    trace = make_trace(0, TRIANGLE_VISITS, metric, noise=0)
     model = Infostop(
         distance_metric=metric, weighted=weighted, weight_exponent=weight_exponent
     )
     labels = model.fit_predict(trace)
 
-    # One visit to each spot, each with the walks to and from D.
-    x0, d, x6 = 0, 1, (2 if split else 0)
+    # One line per spot: the visit, the walk to D, D, the walk to the next spot.
+    left, d, right = 0, 1, (2 if split else 0)
     # fmt: off
-    visit_pair = [
-        (x0, 10), (-1, 9), (d, 10), (-1, 8),
-        (x6, 10), (-1, 8), (d, 10), (-1, 9),
+    assert partition(labels) == [
+        (left, 10), (-1, 9), (d, 10), (-1, 8),
+        (left, 10), (-1, 8), (d, 10), (-1, 8),
+        (left, 10), (-1, 8), (d, 10), (-1, 8),
+        (right, 10), (-1, 8), (d, 10), (-1, 8),
+        (right, 10), (-1, 8), (d, 10), (-1, 8),
+        (right, 10), (-1, 8), (d, 10),
     ]
     # fmt: on
-    assert partition(labels) == (visit_pair * 4)[:-1]
 
 
 # Three spots 15 m apart (more than `r2`), each visited twice with D in between.
@@ -261,47 +274,3 @@ def test_spatial_infomap(metric, label_singleton, expected):
     assert isinstance(labels, np.ndarray)
     assert labels.shape == (len(points),)
     assert partition(labels) == expected
-
-
-# Borderline cases where Infomap has a real choice to make. The pinned partitions
-# were identical on Infomap 1.0.6 and on ten 2.x releases from 2.0.0 to 2.16.0.
-# Other borderline inputs do differ between Infomap versions, so if one of these
-# fails after an Infomap upgrade, labels on borderline data have changed for users.
-
-# Four visits at x=0, four at x=18, and one at x=9 that is within `r2` of both
-# sides. Every visit is followed by a visit to D.
-BRIDGE_VISITS = [
-    v for x in (0, 18, 0, 18, 9, 0, 18, 0, 18) for v in (((x, 0), 10), (D, 10))
-]
-
-
-@pytest.mark.parametrize("metric", ["haversine", "euclidean"])
-def test_infostop_borderline_bridge_visit(metric):
-    trace = make_trace(8, BRIDGE_VISITS, metric)
-    labels = Infostop(distance_metric=metric).fit_predict(trace)
-
-    # One line per visit: the visit, the walk to D, D, the walk back.
-    left, d, right = 0, 1, 2
-    # fmt: off
-    assert partition(labels) == [
-        (left, 10), (-1, 9), (d, 10), (-1, 8),
-        (right, 10), (-1, 8), (d, 10), (-1, 9),
-        (left, 10), (-1, 9), (d, 10), (-1, 8),
-        (right, 10), (-1, 8), (d, 10), (-1, 8),
-        (right, 10), (-1, 8), (d, 10), (-1, 9),  # the bridge visit at x=9
-        (left, 10), (-1, 9), (d, 10), (-1, 8),
-        (right, 10), (-1, 8), (d, 10), (-1, 9),
-        (left, 10), (-1, 9), (d, 10), (-1, 8),
-        (right, 10), (-1, 8), (d, 10),
-    ]
-    # fmt: on
-
-
-@pytest.mark.parametrize("metric", ["haversine", "euclidean"])
-def test_spatial_infomap_borderline_touching_blobs(metric):
-    rng = np.random.default_rng(5)
-    xy = np.vstack([rng.normal(0, 3, (30, 2)), rng.normal(0, 3, (30, 2)) + [12, 0]])
-    labels = SpatialInfomap(distance_metric=metric).fit_predict(to_coords(xy, metric))
-
-    # The last point of the first blob goes with the second blob.
-    assert partition(labels) == [(0, 29), (1, 31)]
