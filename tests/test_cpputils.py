@@ -45,21 +45,16 @@ def events(
 
 @pytest.mark.parametrize("n_cols", [2, 3])
 def test_zero_points(n_cols):
-    # Correct output, but only by luck: the C++ code still reads row 0 (#48).
     assert events(np.empty((0, n_cols))) == ([], [])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="reads rows 0 and -1 of an empty input (out of bounds); "
-    "https://github.com/ulfaslak/infostop/issues/48",
-)
 @pytest.mark.parametrize("n_cols", [2, 3])
-def test_zero_points_reads_nothing(n_cols):
-    # A zero-row view into the middle of a larger array, so the out-of-bounds reads
-    # hit valid memory and show up as a stop event made from rows not in the input.
-    # With 3 columns the last-group check also reads row -1 (time 1000).
+def test_zero_points_invents_no_event(n_cols):
+    # A zero-row view into the middle of a larger array, so an out-of-bounds read
+    # would hit valid memory and show up as a stop event made from rows that are not
+    # in the input: row 0 starts the first group, and with 3 columns the last-group
+    # check reads row -1 (time 1000). `min_size=0` lets such a group through. This
+    # only catches reads that change the output (#48).
     parent = np.array([[9.0, 9.0, 1000.0], [1.0, 2.0, 0.0], [3.0, 4.0, 0.0]])
     empty = as_strided(parent[1:, :n_cols], shape=(0, n_cols))
     assert events(empty, min_size=0) == ([], [])
@@ -178,34 +173,35 @@ def test_integer_and_list_input_match_float_array():
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=pytest.fail.Exception,
-    reason="column counts other than 2 and 3 are not rejected; "
-    "https://github.com/ulfaslak/infostop/issues/49",
-)
-@pytest.mark.parametrize("n_cols", [1, 4])
-def test_wrong_column_count_raises(n_cols):
-    with pytest.raises(ValueError):
-        events(np.zeros((3, n_cols)))
+@pytest.mark.parametrize("shape", [(3, 0), (3, 1), (3, 4), (0, 4)])
+def test_wrong_column_count_raises(shape):
+    with pytest.raises(
+        ValueError, match=rf"2 columns .* 3 columns .*, got {shape[1]}$"
+    ):
+        events(np.zeros(shape))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="an unknown distance_metric calls an uninitialised function pointer; "
-    "https://github.com/ulfaslak/infostop/issues/49",
-)
-def test_unknown_metric_raises():
-    # In a subprocess: the call is undefined behaviour and may crash the process.
-    # The child exits 0 if it raises ValueError and 3 if nothing is raised.
+def test_one_dimensional_input_raises():
+    # pybind11's own check, which ran before #49 too.
+    with pytest.raises(ValueError, match="dimensions"):
+        events(np.zeros(3))
+
+
+@pytest.mark.parametrize("n_rows", [0, 3])
+def test_unknown_metric_raises(n_rows):
+    # In a subprocess: without the check the call is undefined behaviour and may
+    # crash the process. The child prints what happened; anything else (a crash,
+    # an import error) leaves no such line and shows up in the assertion message.
     code = (
-        "import sys, numpy as np, cpputils\n"
+        "import numpy as np, cpputils\n"
         "try:\n"
-        "    cpputils.get_stationary_events(np.zeros((3, 2)), 10, 2, 300, 86400, 'Euclidean')\n"
-        "except ValueError:\n"
-        "    sys.exit(0)\n"
-        "sys.exit(3)\n"
+        "    cpputils.get_stationary_events(\n"
+        f"        np.zeros(({n_rows}, 2)), 10, 2, 300, 86400, 'Euclidean'\n"
+        "    )\n"
+        "except ValueError as e:\n"
+        "    print('raised' if \"got 'Euclidean'\" in str(e) else 'wrong message: ' + str(e))\n"
+        "else:\n"
+        "    print('not raised')\n"
     )
     env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
     child = subprocess.run(
@@ -215,10 +211,8 @@ def test_unknown_metric_raises():
         text=True,
         timeout=60,
     )
-    # A crash is the bug too: a negative code is a POSIX signal, and a code of
-    # 0xC0000000 or more is a Windows NTSTATUS (e.g. 0xC0000005, access violation).
-    crashed = child.returncode < 0 or child.returncode >= 0xC0000000
-    if child.returncode not in (0, 3) and not crashed:
-        # A Python error in the child (e.g. cpputils not importable), not the bug.
-        raise RuntimeError(f"exit code {child.returncode}: {child.stderr}")
-    assert child.returncode == 0, f"exit code {child.returncode}"
+    assert child.stdout.strip() == "raised", (
+        child.returncode,
+        child.stdout,
+        child.stderr,
+    )

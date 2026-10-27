@@ -1,3 +1,5 @@
+import inspect
+
 import folium
 from folium.plugins import HeatMap
 import numpy as np
@@ -43,13 +45,19 @@ class FoliumMap:
         self.labels = labels
         if location is None:
             location = tuple(np.median(points, axis=0))
-        self.m = folium.Map(
-            location=location,
-            zoom_start=zoom_start,
-            tiles=tiles,
-            API_key=API_key,
-            attr="Infostop",
+        map_kwargs = dict(
+            location=location, zoom_start=zoom_start, tiles=tiles, API_key=API_key
         )
+        if isinstance(tiles, str) and "{" in tiles:
+            # folium requires an attribution for a custom tile URL
+            map_kwargs["attr"] = "Infostop"
+        elif (
+            isinstance(tiles, str)
+            and "API_key" in inspect.signature(folium.Map).parameters
+        ):
+            # folium < 0.9 shows the attribution of named tiles only if it is passed
+            map_kwargs["attr"] = folium.TileLayer(tiles=tiles, API_key=API_key).attr
+        self.m = folium.Map(**map_kwargs)
 
     def render_polygons(self, color="#ee9999", opacity=0.3):
         """Render convex hulls of points in each label-group.
