@@ -69,7 +69,12 @@ The [documentation](https://infostop.readthedocs.io) has runnable examples and e
 ## Installation
 `pip install infostop`
 
-**macOS without Infomap wheels** (Intel Macs, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, which needs OpenMP. Run `brew install libomp` first, or install with `OPENMP=0 pip install infostop` to build Infomap without OpenMP.
+**macOS without Infomap wheels** (Intel Macs, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, and Infomap's build needs OpenMP unless you switch it off ([#77](https://github.com/ulfaslak/infostop/issues/77)). Install Infomap without OpenMP first, then infostop:
+```Bash
+$ OPENMP=0 pip install infomap
+$ pip install infostop
+```
+If you use Homebrew and your Python runs natively (not an x86_64 Python under Rosetta on Apple Silicon), `brew install libomp` before `pip install infostop` also works.
 
 **Reproducing earlier results.** Labels for points in ambiguous places, such as stops that lie close together, can differ between Infomap versions and between operating systems. Points labeled `-1` do not change. To reproduce earlier results, pin both `infostop` and `infomap` and use the same operating system. infostop 0.1.9 used `infomap==1.0.6`.
 
