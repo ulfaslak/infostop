@@ -4,10 +4,13 @@ Labels are compared up to relabelling, because label integers are arbitrary and
 Infomap versions may number modules differently. `-1` positions must match.
 """
 
+import infomap
 import numpy as np
 import pytest
 
 from infostop import Infostop, SpatialInfomap
+
+INFOMAP_VERSION = tuple(int(x) for x in infomap.__version__.split(".")[:2])
 
 # Degrees per meter, roughly, at the latitudes used below
 DEG = 1 / 111_000
@@ -174,7 +177,17 @@ def cases():
     return run_cases()
 
 
-@pytest.mark.parametrize("name", sorted(EXPECTED))
+def _param(name):
+    # Clear stops get the same partition on every Infomap since 1.0.6, but the
+    # chain is ambiguous and Infomap 2.10 changed how it is split
+    old_infomap = pytest.mark.skipif(
+        INFOMAP_VERSION < (2, 10),
+        reason="Infomap < 2.10 splits the chain differently",
+    )
+    return pytest.param(name, marks=old_infomap if name.startswith("chain_") else ())
+
+
+@pytest.mark.parametrize("name", [_param(name) for name in sorted(EXPECTED)])
 def test_labels_match_pinned_partition(cases, name):
     assert _canonical(cases[name]) == EXPECTED[name]
 
