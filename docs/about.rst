@@ -71,6 +71,9 @@ Install
 
    pip install infostop
 
+pip also installs the packages Infostop depends on: Infomap, NumPy, SciPy,
+scikit-learn, folium and tqdm. The required versions are in ``setup.py``.
+
 Infostop includes a small C++ extension. If pip finds no prebuilt wheel for
 your Python version and platform, it compiles the extension, and this needs a
 C++ compiler. The ``README.md`` in the `public repository`_ has notes for
