@@ -175,7 +175,7 @@ Stop location medians
 
 After fitting, :meth:`~infostop.Infostop.compute_label_medians` returns a
 dictionary that maps each label to the median ``[latitude, longitude]`` of
-its stationary events:
+the medians of its stationary events:
 
 .. code-block:: pycon
 
@@ -199,9 +199,9 @@ intervals with label ``-1``.
    intervals = compute_intervals(labels, data[:, 2])
 
 For several traces, call it once per trace, with that trace's labels and
-timestamps. Its ``max_time_between`` parameter (default 86400) has the same
-meaning as in :class:`~infostop.Infostop`, and you should give it the same
-value.
+timestamps. Two consecutive points with the same label stay in one interval
+only if the time between them is at most ``max_time_between`` (default
+86400). Use the same value as for the model that produced the labels.
 
 .. note::
 
