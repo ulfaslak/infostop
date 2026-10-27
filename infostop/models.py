@@ -117,15 +117,15 @@ class Infostop:
 
         Parameters
         ----------
-            data : numpy.array (shape (N, 2)/(N, 3)) or list of such numpy.arrays
+            data : numpy.array (shape (N, 2)/(N, 3)) or list (or tuple) of such numpy.arrays
                 Columns 0 and 1 are reserved for lat and lon. Column 2 is reserved for time (any unit consistent with
-                `min_staying_time` and `max_time_between`). If the input type is a list of arrays, each array is assumed
-                to be the trace of a single user, in which case the obtained stop locations are shared by all users in
-                the population.
+                `min_staying_time` and `max_time_between`). If the input type is a list or tuple of arrays, each array
+                is assumed to be the trace of a single user, in which case the obtained stop locations are shared by all
+                users in the population.
 
         Returns
         -------
-            coord_labels : 1d numpy.array or list of such
+            coord_labels : 1d numpy.array or list (or tuple, matching the input) of such
 
         Example
         -------
@@ -141,7 +141,7 @@ class Infostop:
 
         # Infer multiuser mode
         self.multiuser = True
-        if type(data) != list:
+        if type(data) not in (list, tuple):
             self._data = [data]
             self.multiuser = False
             progress = (
@@ -260,7 +260,7 @@ class Infostop:
         # Update model state and return labels
         self._is_fitted = True
         if self.multiuser:
-            return self.labels
+            return self.labels if type(data) == list else tuple(self.labels)
         else:
             return self.labels[0]
 
@@ -373,6 +373,19 @@ class Infostop:
         ), f"There are {np.isnan(np.vstack(data)).sum()} NaN values in the input data."
         for u, coords_u in enumerate(data):
             error_insert = "" if not self.multiuser else f"User {u}: "
+            assert hasattr(coords_u, "shape") and len(coords_u.shape) == 2, (
+                "%sEach trace must be a 2D numpy array with one row per point, got %s. "
+                "Pass a single trace as one 2D array, or several users as a list (or "
+                "tuple) of 2D arrays."
+                % (
+                    error_insert,
+                    (
+                        f"an array of shape {coords_u.shape}"
+                        if hasattr(coords_u, "shape")
+                        else f"a {type(coords_u).__name__}"
+                    ),
+                )
+            )
             assert coords_u.shape[1] in [2, 3], (
                 "%sNumber of columns must be 2 or 3" % error_insert
             )
