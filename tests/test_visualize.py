@@ -1,3 +1,4 @@
+import inspect
 import re
 
 import folium
@@ -260,3 +261,43 @@ def test_plot_map_with_unknown_tiles():
     model, _, _ = _fitted("infostop")
     with pytest.raises(ValueError):
         plot_map(model, tiles="OpenStreetMapp")
+
+
+@pytest.mark.skipif(
+    "API_key" in inspect.signature(folium.Map).parameters,
+    reason="folium < 0.9 uses its own Mapbox tiles",
+)
+def test_plot_map_mapbox_api_key():
+    xyzservices = pytest.importorskip("xyzservices")
+    mapbox = xyzservices.providers.MapBox(accessToken="my-token")
+    model, _, _ = _fitted("infostop")
+    folmap = plot_map(model, tiles="Mapbox", API_key="my-token")
+    # The layer control shows the name of the tile layer
+    folium.LayerControl().add_to(folmap.m)
+    html = folmap.m.get_root().render()
+    tile_urls = re.findall(r"L\.tileLayer\(\s*[\"']([^\"']+)", html)
+    assert tile_urls == [mapbox.build_url(fill_subdomain=False, scale_factor="{r}")]
+    # The key is only in the tile URL
+    assert html.count("my-token") == 1
+    assert "mapbox.com/about/maps" in html and "openstreetmap.org/copyright" in html
+    assert re.search(r"\btileSize\"?: 512\b", html)
+    assert re.search(r"\bzoomOffset\"?: -1\b", html)
+
+
+@pytest.mark.parametrize("tiles", ["OpenStreetMap", "Mapbox"])
+@pytest.mark.parametrize("API_key", [None, ""])
+def test_plot_map_without_api_key(tiles, API_key):
+    # As before: no key is fine for OpenStreetMap, and an error for Mapbox
+    model, _, _ = _fitted("infostop")
+    if tiles == "Mapbox":
+        with pytest.raises(ValueError):
+            plot_map(model, tiles=tiles, API_key=API_key)
+    else:
+        assert isinstance(plot_map(model, tiles=tiles, API_key=API_key).m, folium.Map)
+
+
+def test_plot_map_api_key_unused_by_other_tiles():
+    # The key is not written into the page when the tiles do not need it
+    model, _, _ = _fitted("infostop")
+    html = plot_map(model, API_key="my-token").m.get_root().render()
+    assert "my-token" not in html
