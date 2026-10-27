@@ -81,8 +81,9 @@ def test_no_deprecated_infomap_api():
     trace = _home_work_home()
     with warnings.catch_warnings():
         # Deprecation warnings that are attributed to infostop's own code, e.g.
-        # Infomap's warning for the `Infomap.modules` accessor
-        warnings.filterwarnings("error", category=DeprecationWarning, module="infostop")
+        # Infomap's warning for the `Infomap.modules` accessor (pending in 2.15)
+        for category in (DeprecationWarning, PendingDeprecationWarning):
+            warnings.filterwarnings("error", category=category, module="infostop")
         Infostop().fit_predict(trace)
         Infostop(weighted=True).fit_predict(trace)
         SpatialInfomap().fit_predict(trace[:, :2])
