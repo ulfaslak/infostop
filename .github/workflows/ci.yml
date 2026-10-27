@@ -24,9 +24,11 @@ jobs:
       matrix:
         # The lowest and the highest supported Python on Linux. The highest
         # also on macOS and Windows, because the C++ extension is compiled by
-        # a different compiler on each.
+        # a different compiler on each. Python 3.9 needs ubuntu-24.04:
+        # setup-python has no 3.9 for ubuntu-latest (26.04). On 3.9, pip
+        # compiles Infomap from source, as it has no wheels for 3.9.
         include:
-          - { os: ubuntu-latest, python-version: "3.11" }
+          - { os: ubuntu-24.04, python-version: "3.9" }
           - { os: ubuntu-latest, python-version: "3.14" }
           - { os: macos-latest, python-version: "3.14" }
           - { os: windows-latest, python-version: "3.14" }
