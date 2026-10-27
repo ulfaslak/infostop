@@ -203,3 +203,12 @@ def test_model_pickled_before_num_trials_still_fits():
     del model._num_trials
     labels = model.fit_predict(make_trace(1, ALICE))
     assert sorted(set(labels.tolist())) == [-1, 1, 2]  # home, work (visited once)
+
+
+@pytest.mark.parametrize("num_trials", [1, 50])
+def test_singletons_keep_their_numbers(num_trials):
+    # When no stop has a neighbour within r2, Infomap does not run and the labels
+    # start at 0; renumbering the Infomap modules must not touch that path.
+    trace = make_trace(1, [(HOME, 10), (WORK, 10)])
+    labels = Infostop(num_trials=num_trials).fit_predict(trace)
+    assert [l for l in labels.tolist() if l != -1] == [0] * 10 + [1] * 10
