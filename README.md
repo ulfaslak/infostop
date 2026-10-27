@@ -54,9 +54,9 @@ Solutions can be plotted using:
 >>> folmap.m
 ```
 
-Plotting this onto a map:
+Stop locations on a university campus, with points coloured by their label:
 
-![img](https://ulfaslak.com/files/infostop_example_geomap.png)
+![Points on a map of a university campus, coloured by stop location label](https://raw.githubusercontent.com/ulfaslak/infostop/master/docs/img/infostop_example_map.png)
 
 The [documentation](https://infostop.readthedocs.io) has runnable examples and explains every parameter.
 
