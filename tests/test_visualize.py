@@ -260,3 +260,19 @@ def test_plot_map_with_unknown_tiles():
     model, _, _ = _fitted("infostop")
     with pytest.raises(ValueError):
         plot_map(model, tiles="OpenStreetMapp")
+
+
+def test_plot_map_mapbox_api_key():
+    model, _, _ = _fitted("infostop")
+    html = plot_map(model, tiles="Mapbox", API_key="my-token").m.get_root().render()
+    tile_urls = re.findall(r"L\.tileLayer\(\s*[\"']([^\"']+)", html)
+    assert len(tile_urls) == 1
+    assert "mapbox.com" in tile_urls[0] and "my-token" in tile_urls[0]
+    assert "Infostop" not in html
+
+
+def test_plot_map_api_key_only_in_tile_url():
+    # The key is not written anywhere else into the page
+    model, _, _ = _fitted("infostop")
+    html = plot_map(model, API_key="my-token").m.get_root().render()
+    assert "my-token" not in html

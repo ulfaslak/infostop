@@ -6,6 +6,28 @@ import numpy as np
 from infostop import utils
 
 
+def _mapbox_tiles(tiles, API_key):
+    """Return the Mapbox tile URL with `API_key`, and its attribution.
+
+    Newer folium has no Mapbox tiles of its own, so they come from `xyzservices`
+    (installed with folium >= 0.15). Return None if `tiles` does not name Mapbox, or
+    if `xyzservices` is not installed.
+    """
+    if not isinstance(tiles, str):
+        return None
+    try:
+        import xyzservices
+
+        provider = xyzservices.providers.query_name(tiles)
+    except (ImportError, ValueError):
+        return None
+    if provider.name != "MapBox":
+        return None
+    provider = provider(accessToken=API_key)
+    url = provider.build_url(fill_subdomain=False, scale_factor="{r}")
+    return url, provider.html_attribution
+
+
 class FoliumMap:
     """Plot points on a folium map.
 
@@ -45,16 +67,21 @@ class FoliumMap:
         self.labels = labels
         if location is None:
             location = tuple(np.median(points, axis=0))
-        map_kwargs = dict(
-            location=location, zoom_start=zoom_start, tiles=tiles, API_key=API_key
-        )
-        if isinstance(tiles, str) and "{" in tiles:
+        map_kwargs = dict(location=location, zoom_start=zoom_start, tiles=tiles)
+        old_folium = "API_key" in inspect.signature(folium.Map).parameters
+        mapbox = None
+        if old_folium:
+            # folium < 0.9 puts the key in the URL of its own Mapbox tiles
+            map_kwargs["API_key"] = API_key
+        elif API_key is not None:
+            mapbox = _mapbox_tiles(tiles, API_key)
+        if mapbox is not None:
+            # Newer folium has no Mapbox tiles of its own
+            map_kwargs["tiles"], map_kwargs["attr"] = mapbox
+        elif isinstance(tiles, str) and "{" in tiles:
             # folium requires an attribution for a custom tile URL
             map_kwargs["attr"] = "Infostop"
-        elif (
-            isinstance(tiles, str)
-            and "API_key" in inspect.signature(folium.Map).parameters
-        ):
+        elif isinstance(tiles, str) and old_folium:
             # folium < 0.9 shows the attribution of named tiles only if it is passed
             map_kwargs["attr"] = folium.TileLayer(tiles=tiles, API_key=API_key).attr
         self.m = folium.Map(**map_kwargs)
