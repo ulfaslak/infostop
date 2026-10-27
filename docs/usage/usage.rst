@@ -151,8 +151,9 @@ Several traces at once
 Pass a Python list of arrays, one per person (or one per trace segment), and
 :meth:`~infostop.Infostop.fit_predict` returns a list of label arrays in the
 same order. All traces share the same stop locations, so a place that two
-people visit gets the same label in both traces. Each array can have 2 or 3
-columns, as described in `Input data`_.
+people visit gets the same label in both traces. Each array has the format
+described in `Input data`_, and all arrays must have the same number of
+columns: either all with timestamps or all without.
 
 .. code-block:: pycon
 
