@@ -26,6 +26,7 @@ print(infostop.__file__)
 IMPORT_WITH_OLD_SCIPY_LAYOUT = PRELUDE + """
 import types
 import scipy.spatial
+import sklearn.neighbors  # uses the real scipy.spatial.qhull on old SciPy
 class OldQhullError(Exception):
     pass
 vars(scipy.spatial).pop("QhullError", None)
