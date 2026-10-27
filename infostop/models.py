@@ -12,13 +12,19 @@ class Infostop:
     """Infer stop-location labels from mobility trace. Dynamic points are labeled -1.
 
     Note: currently ONLY works for 2-dimensional spatial data. Data columns 0 and 1 are
-    always intepreted as spatial locations while column 2 is interpreted as time.
+    always interpreted as spatial locations while column 2 is interpreted as time.
 
-    The method entils the following steps:
+    Units: with `distance_metric='haversine'` (the default), columns 0 and 1 are latitude and
+    longitude in degrees, and the distances `r1` and `r2` are in meters. With 'euclidean', all
+    distances are in the units of the coordinates. The time parameters `min_staying_time` and
+    `max_time_between` are in the units of the time column; their defaults assume seconds.
+
+    The method entails the following steps:
         1.  Sequential downsampling: Detect which points are stationary and store only
-            the median of each stationarity event. A point belongs to a stationarity
-            event if it is less than `r1` distance units away from the median of the
-            time-previous collection of stationary points.
+            the median of each stationarity event. A point belongs to the current
+            stationarity event if it is at most `r1` away from the median of the
+            time-previous points in the event (and, with a time column, at most
+            `max_time_between` after the previous point).
         2.  Spatial downsampling: Remove duplicate coordinates. Optionally round off
             coordinates before removing duplicates, to increase the downsampling.
         3.  For each coordinate, find its neighbors within `r2`.
@@ -29,32 +35,44 @@ class Infostop:
     Parameters
     ----------
         r1 : int/float
-            Max distance between time-consecutive points to label them as stationary
+            Max distance between a point and the median of the current stationarity event for the
+            point to join the event. Meters for 'haversine', coordinate units for 'euclidean'.
         r2 : int/float
-            Max distance between stationary points to form an edge.
+            Max distance between the medians of two stationarity events to link them with an edge.
+            Meters for 'haversine', coordinate units for 'euclidean'.
         label_singleton: bool
-            If True, give stationary locations that was only visited once their own label. If False,
-            label them as non-stationary (-1).
-        min_staying_time : int
-            The shortest duration that can constitute a stop.
-        max_time_between : int
-            The longest duration that can constitute a stop.
+            If True, give each stationary location (a distinct stationarity event median) that has no
+            other stationary location within `r2` its own label. If False, label it as non-stationary
+            (-1).
+        min_staying_time : int/float
+            The shortest duration that can constitute a stop, from the first to the last point of a
+            stationarity event. In the units of the time column (the default, 300, is 5 minutes in
+            seconds). Ignored if the data has no time column.
+        max_time_between : int/float
+            The longest time allowed between two consecutive points in the same stationarity event.
+            A longer gap ends the event. In the units of the time column (the default, 86400, is 24
+            hours in seconds). Ignored if the data has no time column.
         min_size : int
-            Minimum size of group to consider it stationary
+            Minimum number of points in a stationarity event.
         min_spacial_resolution : float
             The minimal difference allowed between points before they are considered the same points.
             Highly useful for spatially downsampling data and which dramatically reduces runtime. Higher
-            values yields higher downsampling. For geo data, it is not recommended to increase it beyond
-            1e-4. 1e-5, typically works well and has little impact on results.
+            values yields higher downsampling. In coordinate units: degrees for 'haversine', so 1e-5 is
+            about 1 m. For geo data, it is not recommended to increase it beyond 1e-4. 1e-5, typically
+            works well and has little impact on results. 0 (the default) turns rounding off.
         distance_metric : str
-            Either 'haversine' (for geo data) or 'euclidean'
+            Either 'haversine' (for geo data: latitude and longitude in degrees) or 'euclidean'.
         weighted : bool
-            Weight edges in the network representation by distance. Specifically, the weight used is
-            `1 / distance(a, b) ** weight_exponent`.
+            Weight edges in the network representation by distance. Each edge always has weight
+            `max(count(a), count(b))`, where `count` is the number of stationarity events whose
+            median has exactly these coordinates (after rounding by `min_spacial_resolution`). If
+            True, that weight is divided by `distance(a, b) ** weight_exponent`, with the distance in
+            meters for 'haversine' and in coordinate units for 'euclidean'.
         weight_exponent : float
-            Exponent used when weighting edges in the network. Higher values increases the link strength
-            between nearby locations yielding smaller stop locations. It is not recommended to use a negative
-            `weight_exponent`, unless for a special purpose.
+            Exponent used when weighting edges in the network. Only used if `weighted=True`. Higher
+            values increases the link strength between nearby locations yielding smaller stop
+            locations. It is not recommended to use a negative `weight_exponent`, unless for a special
+            purpose.
         verbose : bool
             Print output during the fitting procedure. Mostly for development and debugging. Option will
             be removed in future versions.
@@ -399,7 +417,11 @@ class Infostop:
 class SpatialInfomap:
     """Cluster a collection of points using Infomap.
 
-    The method entils the following steps:
+    Units: with `distance_metric='haversine'` (the default), columns 0 and 1 are latitude and
+    longitude in degrees, and `r2` is in meters. With 'euclidean', all distances are in the units
+    of the coordinates.
+
+    The method entails the following steps:
         1.  Spatial downsampling: Remove duplicate coordinates. Optionally round off
             coordinates before removing duplicates, to increase the downsampling.
         2.  For each coordinate, find its neighbors within `r2`.
@@ -409,24 +431,30 @@ class SpatialInfomap:
     Parameters
     ----------
         r2 : int/float
-            Max distance between stationary points to form an edge.
+            Max distance between two points to link them with an edge. Meters for 'haversine',
+            coordinate units for 'euclidean'.
         label_singleton: bool
-            If True, give stationary locations that was only visited once their own label. If False,
-            label them as non-stationary (-1).
+            If True, give each point (or group of identical points) that has no other point within `r2`
+            its own label. If False, label it -1.
         min_spacial_resolution : float
             The minimal difference allowed between points before they are considered the same points.
             Highly useful for spatially downsampling data and which dramatically reduces runtime. Higher
-            values yields higher downsampling. For geo data, it is not recommended to increase it beyond
-            1e-4. 1e-5, typically works well and has little impact on results.
+            values yields higher downsampling. In coordinate units: degrees for 'haversine', so 1e-5 is
+            about 1 m. For geo data, it is not recommended to increase it beyond 1e-4. 1e-5, typically
+            works well and has little impact on results. 0 (the default) turns rounding off.
         distance_metric : str
-            Either 'haversine' (for geo data) or 'euclidean'
+            Either 'haversine' (for geo data: latitude and longitude in degrees) or 'euclidean'.
         weighted : bool
-            Weight edges in the network representation by distance. Specifically, the weight used is
-            `1 / distance(a, b) ** weight_exponent`.
+            Weight edges in the network representation by distance. Each edge always has weight
+            `max(count(a), count(b))`, where `count` is the number of input points with exactly these
+            coordinates (after rounding by `min_spacial_resolution`). If True, that weight is divided
+            by `distance(a, b) ** weight_exponent`, with the distance in meters for 'haversine' and in
+            coordinate units for 'euclidean'.
         weight_exponent : float
-            Exponent used when weighting edges in the network. Higher values increases the link strength
-            between nearby locations yielding smaller stop locations. It is not recommended to use a negative
-            `weight_exponent`, unless for a special purpose.
+            Exponent used when weighting edges in the network. Only used if `weighted=True`. Higher
+            values increases the link strength between nearby locations yielding smaller stop
+            locations. It is not recommended to use a negative `weight_exponent`, unless for a special
+            purpose.
         verbose : bool
             Print output during the fitting procedure. Mostly for development and debugging. Option will
             be removed in future versions.
@@ -437,7 +465,7 @@ class SpatialInfomap:
 
     Example
     -------
-        >>> model = SpacialInfomap()
+        >>> model = SpatialInfomap()
         >>> labels = model.fit_predict(coordinates)
     """
 
@@ -470,25 +498,25 @@ class SpatialInfomap:
         self._hyperparam_assertions()
 
     def fit_predict(self, data):
-        """Fit Infostop on one or more location sequnces, and return labels.
+        """Fit SpatialInfomap on a collection of points, and return labels.
 
         Parameters
         ----------
-            data : numpy.array (shape (N, 2)/(N, 3)) or list of such numpy.arrays
-                Columns 0 and 1 are reserved for lat and lon. Column 2 is reserved for time (any unit consistent with
-                `min_staying_time` and `max_time_between`). If the input type is a list of arrays, each array is assumed
-                to be the trace of a single user, in which case the obtained stop locations are shared by all users in
-                the population.
+            data : numpy.array (shape (N, 2))
+                One row per point, in any order. With 'haversine', column 0 is latitude and column 1
+                is longitude, in degrees. With 'euclidean', the columns are x and y. A list of arrays
+                or a time column is not supported.
 
         Returns
         -------
-            coord_labels : 1d numpy.array or list of such
+            coord_labels : 1d numpy.array (shape (N, ))
+                One label per input row. With `label_singleton=False`, points that have no other
+                point within `r2` are labeled -1.
 
         Example
         -------
-            >>> model = Infostop()
-            >>> labels = model.fit_predict(traces)
-            >>> assert type(traces) == type(labels)
+            >>> model = SpatialInfomap()
+            >>> labels = model.fit_predict(coordinates)
         """
 
         if self._verbose:
