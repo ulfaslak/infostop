@@ -109,7 +109,7 @@ setup(
     description="Temporospatial clustering in Python. Well suited for mobility data.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(include=["infostop", "infostop.*"]),
     ext_modules=ext_modules,
     setup_requires=["pybind11>=2.4"],
     install_requires=[
