@@ -113,10 +113,10 @@ setup(
     ext_modules=ext_modules,
     setup_requires=["pybind11>=2.4"],
     install_requires=[
-        "pybind11>=2.4",
-        "infomap>=1.0.6,<3",
+        "infomap>=1.0.6",
         "folium>=0.7.0",
-        "numpy",
+        "numpy!=2.0.0",
+        "scipy",
         "tqdm",
         "scikit-learn",
     ],

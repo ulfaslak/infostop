@@ -67,8 +67,12 @@ Make sure to read the ``README.md`` in the `public repository`_ for notes on dep
 ``infostop`` depends on the following packages which will be
 installed by ``pip`` during the installation process
 
--  ``numpy>=0.14``
--  ``infomap>=3.0.12``
+-  ``infomap>=1.0.6``
+-  ``folium>=0.7.0``
+-  ``numpy!=2.0.0``
+-  ``scipy``
+-  ``tqdm``
+-  ``scikit-learn``
 
 
 Bug reports & contributing
