@@ -7,7 +7,7 @@ from infostop import utils
 
 
 def _mapbox_tiles(tiles, API_key):
-    """Return the Mapbox tile URL with `API_key`, and its attribution.
+    """Return a Mapbox tile layer with `API_key`.
 
     Newer folium has no Mapbox tiles of its own, so they come from `xyzservices`
     (installed with folium >= 0.15). Return None if `tiles` does not name Mapbox, or
@@ -24,8 +24,14 @@ def _mapbox_tiles(tiles, API_key):
     if provider.name != "MapBox":
         return None
     provider = provider(accessToken=API_key)
-    url = provider.build_url(fill_subdomain=False, scale_factor="{r}")
-    return url, provider.html_attribution
+    return folium.TileLayer(
+        tiles=provider.build_url(fill_subdomain=False, scale_factor="{r}"),
+        attr=provider.html_attribution,
+        name="mapbox",
+        # Mapbox serves 512 px tiles
+        tileSize=provider["tileSize"],
+        zoomOffset=provider["zoomOffset"],
+    )
 
 
 class FoliumMap:
@@ -71,13 +77,13 @@ class FoliumMap:
         old_folium = "API_key" in inspect.signature(folium.Map).parameters
         mapbox = None
         if old_folium:
-            # folium < 0.9 puts the key in the URL of its own Mapbox tiles
+            # folium 0.7 and 0.8 put the key in the URL of their own Mapbox tiles
             map_kwargs["API_key"] = API_key
-        elif API_key is not None:
+        elif API_key:
             mapbox = _mapbox_tiles(tiles, API_key)
         if mapbox is not None:
             # Newer folium has no Mapbox tiles of its own
-            map_kwargs["tiles"], map_kwargs["attr"] = mapbox
+            map_kwargs["tiles"] = None
         elif isinstance(tiles, str) and "{" in tiles:
             # folium requires an attribution for a custom tile URL
             map_kwargs["attr"] = "Infostop"
@@ -85,6 +91,8 @@ class FoliumMap:
             # folium < 0.9 shows the attribution of named tiles only if it is passed
             map_kwargs["attr"] = folium.TileLayer(tiles=tiles, API_key=API_key).attr
         self.m = folium.Map(**map_kwargs)
+        if mapbox is not None:
+            mapbox.add_to(self.m)
 
     def render_polygons(self, color="#ee9999", opacity=0.3):
         """Render convex hulls of points in each label-group.
