@@ -130,7 +130,7 @@ Releases are made by the maintainer. A version number on PyPI can never be reuse
 (env) $ git push --atomic origin master v0.1.12
 ```
 
-Pushing a `v*` tag starts the [Release workflow](.github/workflows/release.yml). It builds the sdist and the wheels (Linux x86_64 and aarch64, macOS x86_64 and arm64, Windows x86_64, for each supported Python version), runs the tests against each wheel, and then uploads all of them to PyPI with [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so no API token is stored on GitHub. It uploads nothing if the tag is not `v` + `__version__`, if the tagged commit is not on `master`, or if a build or a test fails. Every PR builds and tests the same wheels, so a broken build shows up before the release.
+Pushing a `v*` tag starts the [Release workflow](https://github.com/ulfaslak/infostop/blob/master/.github/workflows/release.yml). It builds the sdist and the wheels (Linux x86_64 and aarch64, macOS x86_64 and arm64, Windows x86_64, for each supported Python version), runs the tests against each wheel, and then uploads all of them to PyPI with [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so no API token is stored on GitHub. It uploads nothing if the tag is not `v` + `__version__`, if the tagged commit is not on `master`, or if a build or a test fails. Every PR builds and tests the same wheels, so a broken build shows up before the release.
 
 Do not upload the output of `make build` by hand: on Linux it is a `linux_x86_64` wheel, which PyPI rejects.
 
