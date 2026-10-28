@@ -16,8 +16,9 @@ deps:  ## Install dependencies
 	pip install black coverage pytest build
 	if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+# tests/test_docs.py runs the examples in docs/, so copy docs/ too, as CI does.
 test:  ## Run tests against the installed package, like CI (run make install first)
-	@tmp=$$(mktemp -d) && cp -R tests "$$tmp/" && cd "$$tmp" && \
+	@tmp=$$(mktemp -d) && cp -R tests docs "$$tmp/" && cd "$$tmp" && \
 		python -c "import infostop; print('Testing', infostop.__file__)" && \
 		python -m pytest -ra tests; \
 		status=$$?; rm -rf "$$tmp"; exit $$status
