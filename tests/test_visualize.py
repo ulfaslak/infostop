@@ -332,10 +332,12 @@ def test_plot_map_without_api_key(tiles, API_key):
         "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         None,
         "provider without a key",
+        "provider with two keys",
     ],
 )
 def test_plot_map_api_key_unused_by_other_tiles(tiles):
-    # Tiles that need no key give the same map (or error) with and without a key
+    # Tiles that need no key, or more than one, give the same map (or error) with
+    # and without a key
     if tiles == "provider without a key":
         xyzservices = pytest.importorskip("xyzservices")
         # 512 px tiles: folium itself drops these options, so the page shows which
@@ -346,6 +348,16 @@ def test_plot_map_api_key_unused_by_other_tiles(tiles):
             attribution="(C) Test",
             tileSize=512,
             zoomOffset=-1,
+        )
+    elif tiles == "provider with two keys":
+        xyzservices = pytest.importorskip("xyzservices")
+        # Like the old HERE tiles in xyzservices <= 2025.4
+        tiles = xyzservices.TileProvider(
+            name="Test.TwoKeys",
+            url="https://tiles.example.com/{z}/{x}/{y}.png?id={app_id}&code={app_code}",
+            attribution="(C) Test",
+            app_id="<insert your app_id here>",
+            app_code="<insert your app_code here>",
         )
     model, _, _ = _fitted("infostop")
     results = []
@@ -395,6 +407,8 @@ def test_plot_map_api_key_for_tiles_that_need_one(tiles, field, as_object):
     assert tile_urls == [url]
     # The key is only in the tile URL
     assert html.count("my-token") == 1
+    # The layer control lists the layer under the name folium gives provider layers
+    assert re.search(rf"\"{provider.name.replace('.', '').lower()}\"\s*:", html)
     links = re.findall(r'href="([^"]+)"', provider.html_attribution)
     assert links and all(link in html for link in links)
     # The tile options of the provider
@@ -406,12 +420,56 @@ def test_plot_map_api_key_for_tiles_that_need_one(tiles, field, as_object):
         assert re.search(rf"\bzoomOffset\"?: {provider['zoomOffset']}\b", html)
 
 
+@pytest.mark.skipif(OLD_FOLIUM, reason="folium < 0.9 does not use the key here")
+def test_plot_map_api_key_with_every_tile_option():
+    xyzservices = pytest.importorskip("xyzservices")
+    provider = xyzservices.TileProvider(
+        name="Test.Keyed",
+        url="https://{s}.tiles.example.com/{z}/{x}/{y}{r}.png?token={token}",
+        attribution="(C) Test",
+        token="<insert your token here>",
+        min_zoom=3,
+        max_zoom=15,
+        subdomains="pq",
+        tileSize=512,
+        zoomOffset=-1,
+    )
+    html = _render_with_layer_control(provider, "my-token")
+    tile_urls = re.findall(r"L\.tileLayer\(\s*[\"']([^\"']+)", html)
+    assert tile_urls == [
+        "https://{s}.tiles.example.com/{z}/{x}/{y}{r}.png?token=my-token"
+    ]
+    assert html.count("my-token") == 1
+    assert re.search(r"\"testkeyed\"\s*:", html)
+    assert "(C) Test" in html
+    for option, value in [
+        ("minZoom", 3),
+        ("maxZoom", 15),
+        ("subdomains", '"pq"'),
+        ("tileSize", 512),
+        ("zoomOffset", -1),
+    ]:
+        assert re.search(rf"\b{option}\"?: {value}", html), option
+
+
 @pytest.mark.skipif(not OLD_FOLIUM, reason="folium >= 0.9 uses the key")
-def test_plot_map_api_key_for_tiles_unknown_to_old_folium():
+def test_plot_map_api_key_on_old_folium():
     pytest.importorskip("xyzservices")
     model, _, _ = _fitted("infostop")
+    # Tiles that need a key and that folium 0.7 / 0.8 do not know
     with pytest.raises(ValueError, match="only on folium 0.9 and newer"):
         plot_map(model, tiles="Thunderforest.OpenCycleMap", API_key="my-token")
+    # Other errors stay folium's own
+    for tiles, API_key in [
+        ("Thunderforest.OpenCycleMap", None),
+        ("OpenStreetMapp", "k"),
+    ]:
+        with pytest.raises(ValueError) as error:
+            plot_map(model, tiles=tiles, API_key=API_key)
+        assert "API_key" not in str(error.value)
+    # folium 0.7 / 0.8 have CartoDB tiles of their own, which get no key, as before
+    html = plot_map(model, tiles="CartoDB positron", API_key="my-token").m.get_root()
+    assert "my-token" not in html.render()
 
 
 def test_plot_map_passes_plain_floats_to_folium(monkeypatch):

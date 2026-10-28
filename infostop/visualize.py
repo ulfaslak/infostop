@@ -12,11 +12,12 @@ _TILE_OPTIONS = ["min_zoom", "max_zoom", "subdomains", "tileSize", "zoomOffset"]
 
 
 def _keyed_provider(tiles):
-    """Return the `xyzservices` provider of `tiles` if these tiles need a key.
+    """Return the `xyzservices` provider of `tiles` and its key field, if it needs a key.
 
-    `xyzservices` is installed with folium >= 0.15. It marks the key field of these
+    `xyzservices` is installed with folium >= 0.15.1. It marks the key field of these
     tiles with a "<insert your ... here>" placeholder. Return None if `tiles` does not
-    name (or is not) a provider that needs a key, or if `xyzservices` is not installed.
+    name (or is not) a provider that needs one key, or if `xyzservices` is not
+    installed.
     """
     try:
         import xyzservices
@@ -31,24 +32,28 @@ def _keyed_provider(tiles):
         provider = tiles
     else:
         return None
-    return provider if provider.requires_token() else None
+    if not provider.requires_token():
+        return None
+    # The same test as `requires_token`: the field has a placeholder and is in the URL
+    fields = [
+        field
+        for field, value in provider.items()
+        if isinstance(value, str) and "<insert your" in value and field in provider.url
+    ]
+    # One key only: the old HERE tiles need two (app_id and app_code)
+    return (provider, fields[0]) if len(fields) == 1 else None
 
 
 def _keyed_tiles(tiles, API_key):
     """Return a tile layer with `API_key` in its URL, for tiles that need a key.
 
-    Return None if `tiles` does not need a key (see `_keyed_provider`).
+    Return None if `tiles` does not need one key (see `_keyed_provider`).
     """
-    provider = _keyed_provider(tiles)
-    if provider is None:
+    keyed = _keyed_provider(tiles)
+    if keyed is None:
         return None
-    # The same test as `requires_token`: the field has a placeholder and is in the URL
-    keys = {
-        field: API_key
-        for field, value in provider.items()
-        if isinstance(value, str) and "<insert your" in value and field in provider.url
-    }
-    provider = provider(**keys)
+    provider, field = keyed
+    provider = provider(**{field: API_key})
     return folium.TileLayer(
         tiles=provider.build_url(fill_subdomain=False, scale_factor="{r}"),
         attr=provider.html_attribution,
@@ -72,7 +77,7 @@ class FoliumMap:
             Default is 'OpenStreetMap'.
         API_key : str
             API key for tiles that need one, such as 'Mapbox'. It goes into the tile
-            URL. It works for every tile set in the `xyzservices` package that needs a
+            URL. It works for the tile sets in the `xyzservices` package that need a
             key. This needs folium 0.9 or newer with `xyzservices` installed (folium
             0.15.1 and newer installs it). On folium 0.7 and 0.8, only 'Mapbox' works.
         location : tuple of floats
@@ -285,7 +290,7 @@ def plot_map(
             Default is 'OpenStreetMap'.
         API_key : str
             API key for tiles that need one, such as 'Mapbox'. It goes into the tile
-            URL. It works for every tile set in the `xyzservices` package that needs a
+            URL. It works for the tile sets in the `xyzservices` package that need a
             key. This needs folium 0.9 or newer with `xyzservices` installed (folium
             0.15.1 and newer installs it). On folium 0.7 and 0.8, only 'Mapbox' works.
 
