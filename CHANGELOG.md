@@ -9,6 +9,7 @@
 
 ### Other changes
 
+- **Label medians on the date line.** `compute_label_medians` gave a place with stop events on both sides of longitude ±180° (for example in Fiji) the median of the two sides: a longitude near 0°, on the other side of the Earth. It now takes the median across ±180°, so the place gets a longitude near ±180°. The default centre of `plot_map` and `FoliumMap` had the same problem and is fixed the same way. Where a label's longitudes span less than 180°, which is every place away from ±180° and the poles, the label median does not change. The map centre changes only for points on both sides of ±180°, for example several users on both sides of the Pacific. Labels do not change. ([#99](https://github.com/ulfaslak/infostop/pull/99), fixes [#96](https://github.com/ulfaslak/infostop/issues/96))
 - **`verbose=True`: `Found N stop locations` counts every stop location in the labels.** Before, it counted only the stop locations that Infomap groups. It left out the stop locations that get a label without Infomap, because no other coordinate is within `r2`: with the default `label_singleton=True`, often a place visited once. So the count was too low, and it could say `Found 0 stop locations` when the labels had stop locations. When Infomap does not run, the line before now ends with `skipped (no nodes)`, so the count starts its own line. Labels do not change. ([#94](https://github.com/ulfaslak/infostop/pull/94))
 
 ## 0.2.0 (2026-10-28)

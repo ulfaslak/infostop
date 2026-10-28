@@ -14,6 +14,42 @@ def pass_func(input, **kwargs):
     return input
 
 
+def median_lat_lon(coords):
+    """Coordinate-wise median of (lat, lon) points in degrees, also across the antimeridian.
+
+    It is `np.median(coords, axis=0)`, unless the longitudes span more than 180 degrees,
+    and span less once the negative ones are moved up by 360. Then the points are taken
+    to lie on both sides of longitude +-180: the median longitude is taken with the
+    negative longitudes moved up by 360, and moved back into (-180, 180]. Points spread
+    around the globe, whose span does not get smaller, keep the plain median.
+
+    Input
+    -----
+        coords : array-like (shape=(N, 2))
+            Latitudes in column 0 and longitudes in column 1, in degrees.
+
+    Output
+    ------
+        median : numpy.array (shape=(2, ))
+    """
+    coords = np.asarray(coords)
+    median = np.median(coords, axis=0)
+    if len(coords) == 0:
+        return median
+    lon = coords[:, 1]
+    span = lon.max() - lon.min()
+    if span > 180:
+        # In float64, as a float32 longitude plus 360 would lose its last digits
+        lon = lon.astype(float)
+        shifted = np.where(lon < 0, lon + 360, lon)
+        if shifted.max() - shifted.min() < span:
+            median = median.astype(float)
+            median[1] = np.median(shifted)
+            if median[1] > 180:
+                median[1] -= 360
+    return median
+
+
 def query_neighbors(coords, r2, distance_metric="haversine", weighted=False):
     """Build a network from a set of points and a threshold distance.
 
