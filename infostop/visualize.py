@@ -45,7 +45,7 @@ class FoliumMap:
             Initial zoom of the map.
         tiles : str
             Which background tiles to use in the map. Any valid tiles for `folium.Map` method.
-            Default is 'OpenStreetMap'. A good minimalist alternative is 'CartoDBpositron'.
+            Default is 'OpenStreetMap'.
         API_key : str
             Mapbox API key.
         location : tuple of floats
@@ -246,7 +246,7 @@ def plot_map(
             Initial zoom of the map.
         tiles : str
             Which background tiles to use in the map. Any valid tiles for `folium.Map` method.
-            Default is 'OpenStreetMap'. A good minimalist alternative is 'CartoDBpositron'.
+            Default is 'OpenStreetMap'.
         API_key : str
             Mapbox API key.
 

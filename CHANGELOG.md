@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### `plot_map`
+
+- **Tile advice.** The `tiles` docs of `plot_map` and `FoliumMap` no longer suggest `"CartoDBpositron"`. CARTO now requires an API key for these tiles, and without a key every tile shows "API KEY REQUIRED". The default, `"OpenStreetMap"`, needs no key. ([#95](https://github.com/ulfaslak/infostop/pull/95))
+
 ## 0.2.0 (2026-10-28)
 
 This is the first release since 0.1.9 (February 2022). This entry lists everything that changed since 0.1.9.
