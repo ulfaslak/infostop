@@ -1,8 +1,9 @@
 """`Infostop.compute_label_medians` and its helper `utils.median_lat_lon` (#96).
 
 A label median is the coordinate-wise median of the label's stop event medians. With
-'haversine', a label whose longitudes span more than 180 degrees is taken to lie on
-both sides of longitude +-180, and its median longitude is taken across that line.
+'haversine', a label whose longitudes span more than 180 degrees, and less once the
+negative ones are moved up by 360, is taken to lie on both sides of longitude +-180,
+and its median longitude is taken across that line.
 """
 
 import numpy as np
@@ -129,6 +130,21 @@ def test_median_lat_lon_across_the_antimeridian(lons, expected):
     ],
 )
 def test_median_lat_lon_is_np_median_up_to_a_span_of_180(lons):
+    coords = np.column_stack([np.linspace(-80, 80, len(lons)), lons])
+
+    assert np.array_equal(utils.median_lat_lon(coords), np.median(coords, axis=0))
+
+
+@pytest.mark.parametrize(
+    "lons",
+    [
+        [139.69, -74.01, -0.13],  # Tokyo, New York, London
+        [-170.0, -10.0, 10.0, 170.0],
+    ],
+)
+def test_median_lat_lon_of_points_around_the_globe_is_np_median(lons):
+    # The longitudes span more than 180, but not because they lie on both sides of
+    # +-180: moving the negative ones up by 360 does not make the span smaller.
     coords = np.column_stack([np.linspace(-80, 80, len(lons)), lons])
 
     assert np.array_equal(utils.median_lat_lon(coords), np.median(coords, axis=0))
