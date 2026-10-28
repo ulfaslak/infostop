@@ -83,6 +83,12 @@ If you use Homebrew and your Python runs natively (not an x86_64 Python under Ro
 - pin `infostop==0.1.9` and `infomap==1.0.6`, or
 - use infostop 0.2.0 with Infomap 1.0.6 and `num_trials=1`. This keeps the `label_singleton=False` change.
 
+Infomap 1.0.6 has no wheels, so pip compiles it, which needs a C++ compiler. Its build also needs `pkg_resources`, which setuptools 82 removed, so install it like this (for the second option, use `infostop==0.2.0`):
+```Bash
+$ pip install "setuptools<82" pybind11
+$ pip install --no-build-isolation infostop==0.1.9 infomap==1.0.6
+```
+
 The [changelog](https://github.com/ulfaslak/infostop/blob/master/CHANGELOG.md#020-2026-10-28) has the details.
 
 ## Development notes
