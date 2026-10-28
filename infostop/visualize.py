@@ -5,32 +5,61 @@ from folium.plugins import HeatMap
 import numpy as np
 from infostop import utils
 
+# Tile options of an `xyzservices` provider that the tile layer gets. folium uses the
+# first three for providers itself; it drops the last two (512 px tiles, for example
+# Mapbox and MapTiler).
+_TILE_OPTIONS = ["min_zoom", "max_zoom", "subdomains", "tileSize", "zoomOffset"]
 
-def _mapbox_tiles(tiles, API_key):
-    """Return a Mapbox tile layer with `API_key`.
 
-    Newer folium has no Mapbox tiles of its own, so they come from `xyzservices`
-    (installed with folium >= 0.15). Return None if `tiles` does not name Mapbox, or
-    if `xyzservices` is not installed.
+def _keyed_provider(tiles):
+    """Return the `xyzservices` provider of `tiles` and its key field, if it needs a key.
+
+    `xyzservices` is installed with folium >= 0.15.1. It marks the key field of these
+    tiles with a "<insert your ... here>" placeholder. Return None if `tiles` does not
+    name (or is not) a provider that needs one key, or if `xyzservices` is not
+    installed.
     """
-    if not isinstance(tiles, str):
-        return None
     try:
         import xyzservices
+    except ImportError:
+        return None
+    if isinstance(tiles, str):
+        try:
+            provider = xyzservices.providers.query_name(tiles)
+        except ValueError:
+            return None
+    elif isinstance(tiles, xyzservices.TileProvider):
+        provider = tiles
+    else:
+        return None
+    if not provider.requires_token():
+        return None
+    # The same test as `requires_token`: the field has a placeholder and is in the URL
+    fields = [
+        field
+        for field, value in provider.items()
+        if isinstance(value, str) and "<insert your" in value and field in provider.url
+    ]
+    # One key only: the old HERE tiles need two (app_id and app_code)
+    return (provider, fields[0]) if len(fields) == 1 else None
 
-        provider = xyzservices.providers.query_name(tiles)
-    except (ImportError, ValueError):
+
+def _keyed_tiles(tiles, API_key):
+    """Return a tile layer with `API_key` in its URL, for tiles that need a key.
+
+    Return None if `tiles` does not need one key (see `_keyed_provider`).
+    """
+    keyed = _keyed_provider(tiles)
+    if keyed is None:
         return None
-    if provider.name != "MapBox":
-        return None
-    provider = provider(accessToken=API_key)
+    provider, field = keyed
+    provider = provider(**{field: API_key})
     return folium.TileLayer(
         tiles=provider.build_url(fill_subdomain=False, scale_factor="{r}"),
         attr=provider.html_attribution,
-        name="mapbox",
-        # Mapbox serves 512 px tiles
-        tileSize=provider["tileSize"],
-        zoomOffset=provider["zoomOffset"],
+        # folium names layers of providers like this; not after the URL with the key
+        name=provider.name.replace(".", "").lower(),
+        **{option: provider[option] for option in _TILE_OPTIONS if option in provider},
     )
 
 
@@ -47,7 +76,10 @@ class FoliumMap:
             Which background tiles to use in the map. Any valid tiles for `folium.Map` method.
             Default is 'OpenStreetMap'.
         API_key : str
-            Mapbox API key.
+            API key for tiles that need one, such as 'Mapbox'. It goes into the tile
+            URL. It works for the tile sets in the `xyzservices` package that need a
+            key. This needs folium 0.9 or newer with `xyzservices` installed (folium
+            0.15.1 and newer installs it). On folium 0.7 and 0.8, only 'Mapbox' works.
         location : tuple of floats
             Center of the map. Default is the median of `points`, so it must be given
             if `points` is empty.
@@ -75,24 +107,33 @@ class FoliumMap:
             location = tuple(np.median(points, axis=0))
         map_kwargs = dict(location=location, zoom_start=zoom_start, tiles=tiles)
         old_folium = "API_key" in inspect.signature(folium.Map).parameters
-        mapbox = None
+        keyed = None
         if old_folium:
             # folium 0.7 and 0.8 put the key in the URL of their own Mapbox tiles
             map_kwargs["API_key"] = API_key
         elif API_key:
-            mapbox = _mapbox_tiles(tiles, API_key)
-        if mapbox is not None:
-            # Newer folium has no Mapbox tiles of its own
+            keyed = _keyed_tiles(tiles, API_key)
+        if keyed is not None:
+            # folium cannot put the key into the URL of these tiles itself
             map_kwargs["tiles"] = None
         elif isinstance(tiles, str) and "{" in tiles:
             # folium requires an attribution for a custom tile URL
             map_kwargs["attr"] = "Infostop"
         elif isinstance(tiles, str) and old_folium:
             # folium < 0.9 shows the attribution of named tiles only if it is passed
-            map_kwargs["attr"] = folium.TileLayer(tiles=tiles, API_key=API_key).attr
+            try:
+                map_kwargs["attr"] = folium.TileLayer(tiles=tiles, API_key=API_key).attr
+            except ValueError as error:
+                # folium < 0.9 does not know these tiles
+                if API_key and _keyed_provider(tiles) is not None:
+                    raise ValueError(
+                        f"API_key works with tiles={tiles!r} only on folium 0.9 and "
+                        f"newer. This is folium {folium.__version__}."
+                    ) from error
+                raise
         self.m = folium.Map(**map_kwargs)
-        if mapbox is not None:
-            mapbox.add_to(self.m)
+        if keyed is not None:
+            keyed.add_to(self.m)
 
     def render_polygons(self, color="#ee9999", opacity=0.3):
         """Render convex hulls of points in each label-group.
@@ -248,7 +289,10 @@ def plot_map(
             Which background tiles to use in the map. Any valid tiles for `folium.Map` method.
             Default is 'OpenStreetMap'.
         API_key : str
-            Mapbox API key.
+            API key for tiles that need one, such as 'Mapbox'. It goes into the tile
+            URL. It works for the tile sets in the `xyzservices` package that need a
+            key. This needs folium 0.9 or newer with `xyzservices` installed (folium
+            0.15.1 and newer installs it). On folium 0.7 and 0.8, only 'Mapbox' works.
 
     Returns
     -------
