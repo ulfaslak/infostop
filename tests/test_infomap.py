@@ -1,10 +1,15 @@
 import ctypes
+import logging
 import sys
+import threading
+import time
 import warnings
 
+import infomap
 import numpy as np
+import pytest
 
-from infostop import Infostop, SpatialInfomap
+from infostop import Infostop, SpatialInfomap, utils
 
 HOME = (55.70, 12.50)
 WORK = (55.71, 12.52)
@@ -101,3 +106,201 @@ def test_verbose_false_prints_nothing(capfd):
     out, err = capfd.readouterr()
     assert out == ""
     assert err == ""
+
+
+# Infomap's own log with verbose=True (#87). Infomap 2.14 and older print it from C++;
+# 2.15 and later send it through Python logging, so infostop attaches a handler to the
+# "infomap" logger for the run and must leave the logger as it found it.
+
+INFOMAP_LOGGER = logging.getLogger("infomap")
+
+
+def _logger_state(logger):
+    return (list(logger.handlers), logger.level, logger.propagate, logger.disabled)
+
+
+@pytest.fixture
+def infomap_logger():
+    """The "infomap" logger, put back as it was after the test."""
+    handlers, level, propagate, disabled = _logger_state(INFOMAP_LOGGER)
+    yield INFOMAP_LOGGER
+    INFOMAP_LOGGER.handlers[:] = handlers
+    INFOMAP_LOGGER.setLevel(level)
+    INFOMAP_LOGGER.propagate = propagate
+    INFOMAP_LOGGER.disabled = disabled
+
+
+def _list_handler():
+    records = []
+    handler = logging.Handler()
+    handler.emit = records.append
+    return handler, records
+
+
+@pytest.mark.parametrize("model", [Infostop, SpatialInfomap])
+def test_verbose_shows_infomap_log(capfd, infomap_logger, model):
+    trace = _home_work_home()
+    data = trace if model is Infostop else trace[:, :2]
+    _flush_c_stdio()
+    capfd.readouterr()
+
+    model(verbose=True, num_trials=3).fit_predict(data)
+    _flush_c_stdio()
+
+    out = capfd.readouterr().out
+    assert "codelength" in out
+    assert "Trial 3/3" in out
+    if utils._INFOMAP_LOGS_TO_PYTHON:
+        # The log comes between infostop's "running Infomap..." and "done" lines
+        lines = out.splitlines()
+        start = lines.index("    ... running Infomap...")
+        log = [i for i, line in enumerate(lines) if "codelength" in line]
+        assert start < log[0] and log[-1] < lines.index("done")
+
+
+@pytest.mark.parametrize("custom", [False, True])
+def test_verbose_leaves_infomap_logger_as_it_was(infomap_logger, custom):
+    if custom:
+        infomap_logger.setLevel(logging.ERROR)
+        infomap_logger.propagate = False
+    before = _logger_state(infomap_logger)
+
+    Infostop(verbose=True, num_trials=3).fit_predict(_home_work_home())
+    SpatialInfomap(verbose=True, num_trials=3).fit_predict(_home_work_home()[:, :2])
+
+    assert _logger_state(infomap_logger) == before
+
+
+@pytest.mark.parametrize("step", ["create", "run"])
+def test_verbose_restores_infomap_logger_when_infomap_raises(
+    monkeypatch, infomap_logger, step
+):
+    before = _logger_state(infomap_logger)
+    during = []
+
+    class Failure(Exception):
+        pass
+
+    def fail(*args, **kwargs):
+        during.append(_logger_state(infomap_logger))
+        raise Failure
+
+    if step == "create":
+        monkeypatch.setattr(utils, "Infomap", fail)
+    else:
+        monkeypatch.setattr(utils.Infomap, "run", fail)
+    with pytest.raises(Failure):
+        Infostop(verbose=True).fit_predict(_home_work_home())
+
+    assert _logger_state(infomap_logger) == before
+    handlers, level, propagate, _ = during[0]
+    if utils._INFOMAP_LOGS_TO_PYTHON:
+        assert len(handlers) == 1 and level == logging.INFO and propagate is False
+    else:
+        assert during[0] == before
+
+
+def test_verbose_false_attaches_no_handler(monkeypatch, infomap_logger):
+    # Neither while the Infomap network is created nor while it runs
+    before = _logger_state(infomap_logger)
+    during = []
+    real_infomap, real_run = utils.Infomap, utils.Infomap.run
+
+    def create(*args, **kwargs):
+        during.append(_logger_state(infomap_logger))
+        return real_infomap(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        during.append(_logger_state(infomap_logger))
+        return real_run(self, *args, **kwargs)
+
+    monkeypatch.setattr(real_infomap, "run", run)
+    monkeypatch.setattr(utils, "Infomap", create)
+    Infostop(verbose=False).fit_predict(_home_work_home())
+
+    assert during == [before, before]
+
+
+@pytest.mark.skipif(
+    not hasattr(infomap, "enable_log"), reason="infomap.enable_log is new in 2.15"
+)
+def test_verbose_after_infomap_enable_log(capfd, infomap_logger):
+    # `infomap.enable_log()` attaches its own stdout handler: the log is shown once,
+    # and starts on a new line, as with infostop's handler
+    infomap.enable_log()
+    try:
+        before = _logger_state(infomap_logger)
+        Infostop(verbose=True, num_trials=3).fit_predict(_home_work_home())
+        after = _logger_state(infomap_logger)
+    finally:
+        infomap.disable_log()
+
+    assert after == before
+    lines = capfd.readouterr().out.splitlines()
+    assert "    ... running Infomap..." in lines
+    assert sum("Trial 3/3" in line for line in lines) == 1
+
+
+@pytest.mark.skipif(
+    not utils._INFOMAP_LOGS_TO_PYTHON, reason="infostop attaches no handler here"
+)
+def test_concurrent_verbose_runs_restore_infomap_logger(monkeypatch, infomap_logger):
+    # Two threads must not both find the logger without handlers and then save
+    # each other's changes as the original state. Creating the handler is slowed
+    # down to widen the gap between the check and the change.
+    stream_handler = logging.StreamHandler
+
+    def slow_stream_handler(*args, **kwargs):
+        time.sleep(0.05)
+        return stream_handler(*args, **kwargs)
+
+    def show_log_for_a_while():
+        with utils._show_infomap_log(True):
+            time.sleep(0.1)
+
+    monkeypatch.setattr(logging, "StreamHandler", slow_stream_handler)
+    before = _logger_state(infomap_logger)
+    threads = [threading.Thread(target=show_log_for_a_while) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+        time.sleep(0.01)
+    for thread in threads:
+        thread.join()
+
+    assert _logger_state(infomap_logger) == before
+
+
+def test_verbose_leaves_a_users_infomap_handler_alone(capfd, infomap_logger):
+    # A user who attached a handler to the "infomap" logger gets the log there,
+    # and infostop adds no second handler that would print it on stdout as well
+    handler, records = _list_handler()
+    infomap_logger.addHandler(handler)
+    infomap_logger.setLevel(logging.INFO)
+    before = _logger_state(infomap_logger)
+    _flush_c_stdio()
+    capfd.readouterr()
+
+    Infostop(verbose=True, num_trials=3).fit_predict(_home_work_home())
+    _flush_c_stdio()
+
+    assert _logger_state(infomap_logger) == before
+    if utils._INFOMAP_LOGS_TO_PYTHON:
+        assert any("codelength" in record.getMessage() for record in records)
+        assert "codelength" not in capfd.readouterr().out
+
+
+def test_verbose_infomap_log_not_repeated_by_root_handler(infomap_logger):
+    # As after logging.basicConfig(level=logging.INFO): the log is shown once, by
+    # infostop's handler, and does not also reach the root logger's handlers
+    root = logging.getLogger()
+    handler, records = _list_handler()
+    level = root.level
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
+    try:
+        Infostop(verbose=True, num_trials=3).fit_predict(_home_work_home())
+    finally:
+        root.removeHandler(handler)
+        root.setLevel(level)
+
+    assert [record for record in records if record.name == "infomap"] == []
