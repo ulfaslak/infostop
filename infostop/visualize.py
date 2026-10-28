@@ -124,8 +124,9 @@ class FoliumMap:
             key. This needs folium 0.9 or newer with `xyzservices` installed (folium
             0.15.1 and newer installs it). On folium 0.7 and 0.8, only 'Mapbox' works.
         location : tuple of floats
-            Center of the map. Default is the median of `points`, so it must be given
-            if `points` is empty.
+            Center of the map. Default is the median of `points` (across longitude
+            +-180 if the points lie on both sides of it), so it must be given if
+            `points` is empty.
         attr : str
             Credit for the tiles, shown in the corner of the map. Give it when `tiles`
             is a tile URL, for example `attr="© OpenTopoMap (CC-BY-SA)"`. By default,
@@ -154,7 +155,7 @@ class FoliumMap:
         self.points = points
         self.labels = labels
         if location is None:
-            location = tuple(np.median(points, axis=0))
+            location = tuple(utils.median_lat_lon(points))
         map_kwargs = dict(location=location, zoom_start=zoom_start, tiles=tiles)
         old_folium = "API_key" in inspect.signature(folium.Map).parameters
         keyed = None
@@ -414,7 +415,7 @@ def plot_map(
     # With nothing to show, center the map on the coordinates the model clustered
     location = None
     if len(points) == 0:
-        location = tuple(np.median(model._stat_coords, axis=0))
+        location = tuple(utils.median_lat_lon(model._stat_coords))
 
     folmap = FoliumMap(
         points=points,
