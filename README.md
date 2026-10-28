@@ -76,12 +76,17 @@ $ pip install infostop
 ```
 If you use Homebrew and your Python runs natively (not an x86_64 Python under Rosetta on Apple Silicon), `brew install libomp` before `pip install infostop` also works.
 
-**Reproducing earlier results.** Labels for points in ambiguous places, such as stops that lie close together, can differ between Infomap versions and between operating systems. Points labeled `-1` do not change. To reproduce earlier results, pin both `infostop` and `infomap` and use the same operating system. infostop 0.1.9 used `infomap==1.0.6`.
+**Reproducing earlier results.** Since infostop 0.2.0, Infomap clusters the network 50 times (`num_trials=50`) and keeps the best result. This makes labels agree between Infomap versions and between operating systems for almost all inputs. Compared with infostop 0.1.9, some labels change: on some crowded stops (stops that overlap within `r2`), and, with `label_singleton=False`, at places whose stop events share one coordinate. To get the labels of 0.1.9, use the same operating system as before, and either:
+
+- pin `infostop==0.1.9` and `infomap==1.0.6`, or
+- use infostop 0.2.0 with Infomap 1.0.6 and `num_trials=1`. This keeps the `label_singleton=False` change.
+
+The [changelog](https://github.com/ulfaslak/infostop/blob/master/CHANGELOG.md#020-2026-10-28) has the details.
 
 ## Development notes
 We welcome contributions. Before you get started, you may want to read the notes below.
 
-You should **create a virtual environment** with a Python from 3.9 to 3.14 (CI tests 3.9 and 3.14). `make env` uses the `python3` on your `PATH`. On Python 3.9 and 3.10 there are no Infomap wheels, so pip compiles Infomap, which needs a C++ compiler. In your local `infostop` folder, do:
+You should **create a virtual environment** with a Python from 3.9 to 3.14 (CI tests 3.9 and 3.14). `make env` uses the `python3` on your `PATH`. On Python 3.9 and 3.10, pip installs Infomap 2.9.2, the last Infomap for these versions. It has no wheels for them, so pip compiles it, which needs a C++ compiler. In your local `infostop` folder, do:
 ```Bash
 $ make env
 $ source env/bin/activate
@@ -113,7 +118,7 @@ Like CI, this runs the tests from a temporary folder against the installed packa
 ```
 Then go to localhost:8001 in your browser to look at the coverage report.
 
-**Format code with `black`**. We don't want to argue about code formatting. Please run `black` to apply standard formatting to your code before your make a pull request.
+**Format code with `black`**. We don't want to argue about code formatting. Please run `black` to apply standard formatting to your code before you make a pull request.
 
 The `Makefile` implements a number of commands that are useful during development.
 Go ahead and execute `make help` to see descriptions of available commands, or inspect the file so you understand what's going on. 
@@ -130,13 +135,13 @@ This lets you select the virtual environment as a kernel in a Jupyter notebook.
 Releases are made by the maintainer. A version number on PyPI can never be reused, so a release cannot be undone.
 
 1. On an up-to-date `master` that has everything you want to release, execute the `increment_version.py` script ONCE. It increments the last number of `__version__` in `infostop/metadata.py`. Commit the change.
-2. [Tag](https://git-scm.com/book/en/v2/Git-Basics-Tagging) that commit with `v` followed by the version in `infostop/metadata.py`. For example, if it says `0.1.12`:
+2. [Tag](https://git-scm.com/book/en/v2/Git-Basics-Tagging) that commit with `v` followed by the version in `infostop/metadata.py`. For example, if it says `0.2.1`:
 ```Bash
-(env) $ git tag -a v0.1.12 -m "Infostop version 0.1.12"
+(env) $ git tag -a v0.2.1 -m "Infostop version 0.2.1"
 ```
 3. Push the commit and the tag together:
 ```Bash
-(env) $ git push --atomic origin master v0.1.12
+(env) $ git push --atomic origin master v0.2.1
 ```
 
 Pushing a `v*` tag starts the [Release workflow](https://github.com/ulfaslak/infostop/blob/master/.github/workflows/release.yml). It builds the sdist and the wheels (Linux x86_64 and aarch64, macOS x86_64 and arm64, Windows x86_64, for each supported Python version), runs the tests against each wheel, and then uploads all of them to PyPI with [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so no API token is stored on GitHub. It uploads nothing if the tag is not `v` + `__version__`, if the tagged commit is not on `master`, or if a build or a test fails. Every PR builds and tests the same wheels, so a broken build shows up before the release.
