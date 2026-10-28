@@ -1,3 +1,7 @@
+import contextlib
+import logging
+import sys
+
 import numpy as np
 from sklearn.neighbors import BallTree
 
@@ -5,13 +9,49 @@ try:
     from scipy.spatial import QhullError
 except ImportError:  # SciPy < 1.8
     from scipy.spatial.qhull import QhullError
+import infomap
 from infomap import Infomap
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
 
+# Infomap 2.15 and later send their log through Python's `logging`, and only when the
+# "infomap" logger has a handler of its own. Older versions print it from C++.
+_INFOMAP_LOGS_TO_PYTHON = hasattr(infomap, "enable_log")
+
 
 def pass_func(input, **kwargs):
     return input
+
+
+@contextlib.contextmanager
+def _show_infomap_log(verbose):
+    """Show Infomap's log on stdout during one run, on Infomap 2.15 and later.
+
+    Attaches a stream handler to the "infomap" logger, sets the logger to INFO and
+    turns off propagation (so that a root handler does not print each line again).
+    Afterwards, also if the run raises, it removes the handler and restores the
+    level and propagation. Does nothing if `verbose` is False, on Infomap 2.14 and
+    older (they print their log themselves unless `--silent`), or if the "infomap"
+    logger already has handlers (then the user's logging setup decides).
+
+    Yields True if it attached the handler.
+    """
+    logger = logging.getLogger("infomap")
+    if not (verbose and _INFOMAP_LOGS_TO_PYTHON) or logger.handlers:
+        yield False
+        return
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    level, propagate = logger.level, logger.propagate
+    try:
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
+        yield True
+    finally:
+        logger.removeHandler(handler)
+        logger.setLevel(level)
+        logger.propagate = propagate
 
 
 def query_neighbors(coords, r2, distance_metric="haversine", weighted=False):
@@ -78,11 +118,13 @@ def infomap_communities(
     else:
         progress = pass_func
 
-    # Initiate  two-level Infomap
-    network = Infomap(
-        f"--two-level --num-trials {int(num_trials)}"
-        + (" --silent" if not verbose else "")
-    )
+    # Initiate two-level Infomap. On Infomap 2.15 and later, a network that is created
+    # while the log has no handler stays silent, so attach it here too.
+    with _show_infomap_log(verbose):
+        network = Infomap(
+            f"--two-level --num-trials {int(num_trials)}"
+            + (" --silent" if not verbose else "")
+        )
 
     # Add nodes (and reindex nodes because Infomap wants ranked indices)
     if verbose:
@@ -146,10 +188,12 @@ def infomap_communities(
         print(f"    --> added {n_edges} edges")
 
     # Run infomap
-    if verbose:
-        print("    ... running Infomap...", end=" ")
     if len(name_map) > 0:
-        result = network.run()
+        with _show_infomap_log(verbose) as log_shown:
+            if verbose:
+                # If Infomap's log follows, it starts on a new line
+                print("    ... running Infomap...", end="\n" if log_shown else " ")
+            result = network.run()
         # Infomap >= 2.14 returns the result; later versions deprecate `network.modules`
         modules = network.modules if result is None else result.modules().items()
         # Convert to node-community dict format
@@ -162,7 +206,7 @@ def infomap_communities(
     else:
         partition = {}
         if verbose:
-            print("skipped (no nodes)")
+            print("    ... running Infomap... skipped (no nodes)")
 
     return partition, singleton_nodes
 

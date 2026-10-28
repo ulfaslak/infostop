@@ -3,7 +3,7 @@ import re
 import numpy as np
 import pytest
 
-from infostop import Infostop
+from infostop import Infostop, utils
 from infostop.models import SpatialInfomap
 
 HOME, WORK, SHOP = (55.70, 12.50), (55.71, 12.52), (55.72, 12.50)
@@ -138,7 +138,12 @@ def test_running_infomap_line_ends(capsys, places):
     lines = capsys.readouterr().out.splitlines()
     running = [line for line in lines if "running Infomap" in line]
     assert len(running) == 1
-    if len(places) > len(set(places)):
+    if len(places) > len(set(places)) and utils._INFOMAP_LOGS_TO_PYTHON:
+        # Infomap's log comes through Python here, so it starts on a new line
+        assert running[0] == "    ... running Infomap..."
+        assert lines.index("done") > lines.index(running[0])
+    elif len(places) > len(set(places)):
+        # Infomap 2.14 and older print their log from C++, outside `sys.stdout`
         assert running[0] == "    ... running Infomap... done"
     else:
         assert running[0] == "    ... running Infomap... skipped (no nodes)"
