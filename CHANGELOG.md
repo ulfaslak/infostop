@@ -5,6 +5,7 @@
 ### `plot_map`
 
 - **Tile advice.** The `tiles` docs of `plot_map` and `FoliumMap` no longer suggest `"CartoDBpositron"`. CARTO now requires an API key for these tiles, and without a key every tile shows "API KEY REQUIRED". The default, `"OpenStreetMap"`, needs no key. ([#95](https://github.com/ulfaslak/infostop/pull/95))
+- **`API_key` works for every tile set that needs a key**, not only Mapbox. For example, `plot_map(model, tiles="Thunderforest.OpenCycleMap", API_key=...)` puts the key into the Thunderforest tile URL. Before, infostop dropped the key, and folium raised `ValueError: Token is required for this provider`. This works for the tile sets that the `xyzservices` package marks as needing a key, and needs folium 0.9 or newer with `xyzservices` (folium 0.15.1 and newer installs it). With `xyzservices` 2026.9.0 or newer, this includes CartoDB tiles: `tiles="CartoDB positron", API_key=...` now puts your CARTO key into the URL. Mapbox maps and tiles that need no key are unchanged. On folium 0.7 and 0.8, `API_key` still works only for Mapbox. With `xyzservices` installed, other tile sets that need a key raise an error there that says so.
 
 ## 0.2.0 (2026-10-28)
 
