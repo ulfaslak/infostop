@@ -1,4 +1,6 @@
 import inspect
+import re
+import warnings
 
 import folium
 from folium.plugins import HeatMap
@@ -44,7 +46,7 @@ def _keyed_provider(tiles):
     return (provider, fields[0]) if len(fields) == 1 else None
 
 
-def _keyed_tiles(tiles, API_key):
+def _keyed_tiles(tiles, API_key, attr=None):
     """Return a tile layer with `API_key` in its URL, for tiles that need a key.
 
     Return None if `tiles` does not need one key (see `_keyed_provider`).
@@ -56,11 +58,52 @@ def _keyed_tiles(tiles, API_key):
     provider = provider(**{field: API_key})
     return folium.TileLayer(
         tiles=provider.build_url(fill_subdomain=False, scale_factor="{r}"),
-        attr=provider.html_attribution,
+        attr=attr or provider.html_attribution,
         # folium names layers of providers like this; not after the URL with the key
         name=provider.name.replace(".", "").lower(),
         **{option: provider[option] for option in _TILE_OPTIONS if option in provider},
     )
+
+
+def _url_credit(url):
+    """Return the credit for a custom tile URL without `attr`: the host of the URL.
+
+    folium requires a credit for a custom URL. The host names where the tiles come
+    from without claiming to be their author.
+    """
+    match = re.match(r"(?:[A-Za-z][A-Za-z0-9+.-]*:)?//(.*)", url)
+    if match is None:
+        return "Custom tiles"
+    # The URL up to the tile coordinates
+    head = re.split(r"\{[xyz]\}", match.group(1), maxsplit=1)[0]
+    if "@" in head:
+        # Likely a user name and password, which may hold "/", "?" or "#" too
+        return "Custom tiles"
+    host = re.split(r"[/?#]", head, maxsplit=1)[0]
+    # Without the "{s}" subdomain placeholder
+    host = re.sub(r"^\{s\}\.", "", host)
+    return f"Tiles from {host}" if host else "Custom tiles"
+
+
+def _named_tile_layer(tiles, **kwargs):
+    """Return folium's tile layer for the tile name `tiles`, made without a credit.
+
+    Raise if folium does not know the name. With a credit, folium takes an unknown
+    tile name for a tile URL and shows no tiles. Without one, it raises.
+    """
+    try:
+        with warnings.catch_warnings():
+            # For example "CartoDB tiles now require an API key": folium.Map warns
+            warnings.simplefilter("ignore")
+            return folium.TileLayer(tiles=tiles, **kwargs)
+    except ValueError as error:
+        # folium's error says that an attribution is missing
+        if "attribution" not in str(error):
+            raise
+        raise ValueError(
+            f"folium {folium.__version__} knows no tiles named {tiles!r}, and it is "
+            "not a tile URL with {z}, {x} and {y}."
+        ) from error
 
 
 class FoliumMap:
@@ -84,6 +127,12 @@ class FoliumMap:
             Center of the map. Default is the median of `points` (across longitude
             +-180 if the points lie on both sides of it), so it must be given if
             `points` is empty.
+        attr : str
+            Credit for the tiles, shown in the corner of the map. Give it when `tiles`
+            is a tile URL, for example `attr="© OpenTopoMap (CC-BY-SA)"`. By default,
+            named tiles show their own credit, and a tile URL shows
+            "Tiles from <host>". folium 0.9 to 0.14 ignore `attr` for named tiles,
+            except for tiles that get `API_key`.
 
     Example
     -------
@@ -101,6 +150,7 @@ class FoliumMap:
         tiles="OpenStreetMap",
         API_key=None,
         location=None,
+        attr=None,
     ):
         self.points = points
         self.labels = labels
@@ -113,17 +163,17 @@ class FoliumMap:
             # folium 0.7 and 0.8 put the key in the URL of their own Mapbox tiles
             map_kwargs["API_key"] = API_key
         elif API_key:
-            keyed = _keyed_tiles(tiles, API_key)
+            keyed = _keyed_tiles(tiles, API_key, attr)
         if keyed is not None:
             # folium cannot put the key into the URL of these tiles itself
             map_kwargs["tiles"] = None
         elif isinstance(tiles, str) and "{" in tiles:
             # folium requires an attribution for a custom tile URL
-            map_kwargs["attr"] = "Infostop"
+            map_kwargs["attr"] = attr or _url_credit(tiles)
         elif isinstance(tiles, str) and old_folium:
             # folium < 0.9 shows the attribution of named tiles only if it is passed
             try:
-                map_kwargs["attr"] = folium.TileLayer(tiles=tiles, API_key=API_key).attr
+                tiles_attr = _named_tile_layer(tiles, API_key=API_key).attr
             except ValueError as error:
                 # folium < 0.9 does not know these tiles
                 if API_key and _keyed_provider(tiles) is not None:
@@ -132,6 +182,11 @@ class FoliumMap:
                         f"newer. This is folium {folium.__version__}."
                     ) from error
                 raise
+            map_kwargs["attr"] = attr or tiles_attr
+        elif attr:
+            if isinstance(tiles, str):
+                _named_tile_layer(tiles)
+            map_kwargs["attr"] = attr
         self.m = folium.Map(**map_kwargs)
         if keyed is not None:
             keyed.add_to(self.m)
@@ -246,6 +301,7 @@ def plot_map(
     zoom_start=12,
     tiles="OpenStreetMap",
     API_key=None,
+    attr=None,
 ):
     """Load Folium map to display the data and fit.
 
@@ -294,6 +350,12 @@ def plot_map(
             URL. It works for the tile sets in the `xyzservices` package that need a
             key. This needs folium 0.9 or newer with `xyzservices` installed (folium
             0.15.1 and newer installs it). On folium 0.7 and 0.8, only 'Mapbox' works.
+        attr : str
+            Credit for the tiles, shown in the corner of the map. Give it when `tiles`
+            is a tile URL, for example `attr="© OpenTopoMap (CC-BY-SA)"`. By default,
+            named tiles show their own credit, and a tile URL shows
+            "Tiles from <host>". folium 0.9 to 0.14 ignore `attr` for named tiles,
+            except for tiles that get `API_key`.
 
     Returns
     -------
@@ -362,6 +424,7 @@ def plot_map(
         tiles=tiles,
         API_key=API_key,
         location=location,
+        attr=attr,
     )
 
     if polygons:
