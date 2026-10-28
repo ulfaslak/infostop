@@ -258,6 +258,34 @@ def test_plot_map_with_custom_tile_url():
     assert np.allclose(folmap.m.location, np.median(folmap.points, axis=0))
 
 
+def _named_tiles(documented):
+    """The quoted tile names in the `tiles` entry of a docstring."""
+    lines = inspect.getdoc(documented).splitlines()
+    start = next(
+        i for i, line in enumerate(lines) if line.strip().startswith("tiles :")
+    )
+    indent = len(lines[start]) - len(lines[start].lstrip())
+    entry = []
+    for line in lines[start + 1 :]:
+        if line.strip() and len(line) - len(line.lstrip()) <= indent:
+            break
+        entry.append(line)
+    return re.findall(r"'([^']+)'", " ".join(entry))
+
+
+@pytest.mark.parametrize("documented", [plot_map, FoliumMap])
+def test_tiles_named_in_the_docs_need_no_key(documented):
+    # The docs once recommended CartoDB tiles, which now show only "API KEY
+    # REQUIRED" without a key
+    xyzservices = pytest.importorskip("xyzservices")
+    names = _named_tiles(documented)
+    assert "OpenStreetMap" in names
+    for name in names:
+        # folium looks up "OpenStreetMap" under this name
+        query = "OpenStreetMap Mapnik" if name == "OpenStreetMap" else name
+        assert not xyzservices.providers.query_name(query).requires_token(), name
+
+
 def test_plot_map_with_unknown_tiles():
     model, _, _ = _fitted("infostop")
     with pytest.raises(ValueError):
