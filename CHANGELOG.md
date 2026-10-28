@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **`verbose=True`: `Found N stop locations` counts every stop location in the labels.** Before, it counted only the places that Infomap groups, and left out the places that get their own label because they have no other stop event within `r2` (with the default `label_singleton=True`, a place visited once). So the count was too low, and it could say `Found 0 stop locations` when the labels had stop locations. It also now starts on its own line when Infomap does not run. Labels do not change. ([#94](https://github.com/ulfaslak/infostop/pull/94))
+- **`verbose=True`: `Found N stop locations` counts every stop location in the labels.** Before, it counted only the stop locations that Infomap groups. It left out the stop locations that get a label without Infomap, because no other coordinate is within `r2`: with the default `label_singleton=True`, often a place visited once. So the count was too low, and it could say `Found 0 stop locations` when the labels had stop locations. When Infomap does not run, the line before now ends with `skipped (no nodes)`, so the count starts its own line. Labels do not change. ([#94](https://github.com/ulfaslak/infostop/pull/94))
 
 ## 0.2.0 (2026-10-28)
 
