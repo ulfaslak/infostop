@@ -1,4 +1,5 @@
 import inspect
+import json
 import re
 
 import folium
@@ -261,6 +262,74 @@ def test_plot_map_with_custom_tile_url():
     assert np.allclose(folmap.m.location, np.median(folmap.points, axis=0))
 
 
+def _credits(html):
+    """The tile credits (attributions) in a rendered page."""
+    found = re.findall(r"\"?attribution\"?: *\"((?:[^\"\\]|\\.)*)\"", html)
+    return [json.loads(f'"{credit}"') for credit in found]
+
+
+def _render(**kwargs):
+    model, _, _ = _fitted("infostop")
+    return plot_map(model, **kwargs).m.get_root().render()
+
+
+@pytest.mark.parametrize(
+    "tiles, credit",
+    [
+        ("https://tile.opentopomap.org/{z}/{x}/{y}.png", "tile.opentopomap.org"),
+        (
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            "tile.openstreetmap.org",
+        ),
+        ("http://localhost:8080/{z}/{x}/{y}.png", "localhost:8080"),
+        (
+            "https://me:secret@tiles.example.com/{z}/{x}/{y}.png?k=secret",
+            "tiles.example.com",
+        ),
+    ],
+)
+@pytest.mark.parametrize("attr", [None, "", "© OpenTopoMap (CC-BY-SA)"])
+def test_plot_map_credit_of_a_tile_url(tiles, credit, attr):
+    # A tile URL is credited with `attr`, or else with its host, not with infostop
+    html = _render(tiles=tiles, attr=attr)
+    assert _credits(html) == [attr or f"Tiles from {credit}"]
+    assert "Infostop" not in html
+    assert html.count("secret") == tiles.count("secret")
+
+
+def test_plot_map_credit_of_a_tile_url_without_host():
+    assert _credits(_render(tiles="/tiles/{z}/{x}/{y}.png")) == ["Custom tiles"]
+
+
+@pytest.mark.filterwarnings("ignore:CartoDB tiles now require an API key")
+@pytest.mark.parametrize("tiles", ["OpenStreetMap", "CartoDB positron"])
+def test_plot_map_passes_attr_to_folium(tiles):
+    # Named tiles get the credit that folium gives them with this `attr`: folium
+    # 0.9 to 0.14 keep the tile set's own credit
+    expected = folium.Map(location=HOME, tiles=tiles, attr="My credit").get_root()
+    assert _credits(_render(tiles=tiles, attr="My credit")) == _credits(
+        expected.render()
+    )
+
+
+def test_plot_map_attr_without_tiles():
+    def page(**kwargs):
+        # folium gives each element a random id
+        return re.sub(r"_[0-9a-f]{32}", "_ID", _render(tiles=None, **kwargs))
+
+    assert page(attr="My credit") == page()
+
+
+@pytest.mark.skipif(OLD_FOLIUM, reason="folium < 0.9 does not use the key here")
+def test_plot_map_attr_with_api_key():
+    pytest.importorskip("xyzservices")
+    html = _render(
+        tiles="Thunderforest.OpenCycleMap", API_key="my-token", attr="My credit"
+    )
+    assert _credits(html) == ["My credit"]
+    assert html.count("my-token") == 1
+
+
 def _named_tiles(documented):
     """The quoted tile names in the `tiles` entry of a docstring."""
     lines = inspect.getdoc(documented).splitlines()
@@ -289,10 +358,11 @@ def test_tiles_named_in_the_docs_need_no_key(documented):
         assert not xyzservices.providers.query_name(query).requires_token(), name
 
 
-def test_plot_map_with_unknown_tiles():
+@pytest.mark.parametrize("attr", [None, "My credit"])
+def test_plot_map_with_unknown_tiles(attr):
     model, _, _ = _fitted("infostop")
     with pytest.raises(ValueError):
-        plot_map(model, tiles="OpenStreetMapp")
+        plot_map(model, tiles="OpenStreetMapp", attr=attr)
 
 
 @pytest.mark.skipif(OLD_FOLIUM, reason="folium < 0.9 uses its own Mapbox tiles")

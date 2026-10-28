@@ -1,4 +1,6 @@
 import inspect
+from urllib.parse import urlsplit
+import warnings
 
 import folium
 from folium.plugins import HeatMap
@@ -44,7 +46,7 @@ def _keyed_provider(tiles):
     return (provider, fields[0]) if len(fields) == 1 else None
 
 
-def _keyed_tiles(tiles, API_key):
+def _keyed_tiles(tiles, API_key, attr=None):
     """Return a tile layer with `API_key` in its URL, for tiles that need a key.
 
     Return None if `tiles` does not need one key (see `_keyed_provider`).
@@ -56,11 +58,22 @@ def _keyed_tiles(tiles, API_key):
     provider = provider(**{field: API_key})
     return folium.TileLayer(
         tiles=provider.build_url(fill_subdomain=False, scale_factor="{r}"),
-        attr=provider.html_attribution,
+        attr=attr or provider.html_attribution,
         # folium names layers of providers like this; not after the URL with the key
         name=provider.name.replace(".", "").lower(),
         **{option: provider[option] for option in _TILE_OPTIONS if option in provider},
     )
+
+
+def _url_credit(url):
+    """Return the credit for a custom tile URL without `attr`: the host of the URL.
+
+    folium requires a credit for a custom URL. The host names where the tiles come
+    from without claiming to be their author.
+    """
+    # No user name or password, and no "{s}" subdomain placeholder
+    host = urlsplit(url).netloc.rpartition("@")[2].replace("{s}.", "")
+    return f"Tiles from {host}" if host else "Custom tiles"
 
 
 class FoliumMap:
@@ -83,6 +96,12 @@ class FoliumMap:
         location : tuple of floats
             Center of the map. Default is the median of `points`, so it must be given
             if `points` is empty.
+        attr : str
+            Credit for the tiles, shown in the corner of the map. Give it when `tiles`
+            is a tile URL, for example `attr="© OpenTopoMap (CC-BY-SA)"`. By default,
+            named tiles show their own credit, and a tile URL shows
+            "Tiles from <host>". folium 0.9 to 0.14 always show the own credit of
+            named tiles.
 
     Example
     -------
@@ -100,6 +119,7 @@ class FoliumMap:
         tiles="OpenStreetMap",
         API_key=None,
         location=None,
+        attr=None,
     ):
         self.points = points
         self.labels = labels
@@ -112,17 +132,17 @@ class FoliumMap:
             # folium 0.7 and 0.8 put the key in the URL of their own Mapbox tiles
             map_kwargs["API_key"] = API_key
         elif API_key:
-            keyed = _keyed_tiles(tiles, API_key)
+            keyed = _keyed_tiles(tiles, API_key, attr)
         if keyed is not None:
             # folium cannot put the key into the URL of these tiles itself
             map_kwargs["tiles"] = None
         elif isinstance(tiles, str) and "{" in tiles:
             # folium requires an attribution for a custom tile URL
-            map_kwargs["attr"] = "Infostop"
+            map_kwargs["attr"] = attr or _url_credit(tiles)
         elif isinstance(tiles, str) and old_folium:
             # folium < 0.9 shows the attribution of named tiles only if it is passed
             try:
-                map_kwargs["attr"] = folium.TileLayer(tiles=tiles, API_key=API_key).attr
+                tiles_attr = folium.TileLayer(tiles=tiles, API_key=API_key).attr
             except ValueError as error:
                 # folium < 0.9 does not know these tiles
                 if API_key and _keyed_provider(tiles) is not None:
@@ -131,6 +151,15 @@ class FoliumMap:
                         f"newer. This is folium {folium.__version__}."
                     ) from error
                 raise
+            map_kwargs["attr"] = attr or tiles_attr
+        elif attr:
+            if isinstance(tiles, str):
+                # With an attribution, folium takes an unknown tile name for a tile
+                # URL and shows no tiles. Without one, it raises for an unknown name.
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    folium.TileLayer(tiles=tiles)
+            map_kwargs["attr"] = attr
         self.m = folium.Map(**map_kwargs)
         if keyed is not None:
             keyed.add_to(self.m)
@@ -245,6 +274,7 @@ def plot_map(
     zoom_start=12,
     tiles="OpenStreetMap",
     API_key=None,
+    attr=None,
 ):
     """Load Folium map to display the data and fit.
 
@@ -293,6 +323,12 @@ def plot_map(
             URL. It works for the tile sets in the `xyzservices` package that need a
             key. This needs folium 0.9 or newer with `xyzservices` installed (folium
             0.15.1 and newer installs it). On folium 0.7 and 0.8, only 'Mapbox' works.
+        attr : str
+            Credit for the tiles, shown in the corner of the map. Give it when `tiles`
+            is a tile URL, for example `attr="© OpenTopoMap (CC-BY-SA)"`. By default,
+            named tiles show their own credit, and a tile URL shows
+            "Tiles from <host>". folium 0.9 to 0.14 always show the own credit of
+            named tiles.
 
     Returns
     -------
@@ -361,6 +397,7 @@ def plot_map(
         tiles=tiles,
         API_key=API_key,
         location=location,
+        attr=attr,
     )
 
     if polygons:
