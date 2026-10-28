@@ -8,7 +8,7 @@ This is the first release since 0.1.9 (February 2022). This entry lists everythi
 
 Without any change to your code, your labels and intervals can change in three places:
 
-- **Crowded stops.** Infomap now runs 50 times instead of once (`num_trials=50`). On some crowded stops, this gives different labels. See the next section.
+- **Crowded stops.** Infomap now runs 50 times instead of once (`num_trials=50`). On some crowded stops, this gives different labels. See "Labels on crowded stops change once" below.
 - **`label_singleton=False`.** A place with several stop events at exactly one coordinate now gets a label instead of `-1`. See "Other changes to labels".
 - **`compute_intervals`** now returns the last interval of a trace that ends at a stop. See "`compute_intervals` gives one interval per stay".
 
@@ -56,7 +56,7 @@ To get the labels of 0.1.9 with 0.2.0, keep Infomap 1.0.6, pass `num_trials=1`, 
 
 - **A tuple of traces** works like a list, and returns a tuple of label arrays. Before, it failed with an `AttributeError` or a `ValueError`. ([#42](https://github.com/ulfaslak/infostop/pull/42))
 - **Users with and without timestamps.** In a list of traces, some traces can have a time column and some not. Before, this failed with a `ValueError` from NumPy. Note that a trace without a time column skips the time checks (`min_staying_time` and `max_time_between`). So a short pass by that user can count as a stop, and it can join stops of other users. ([#55](https://github.com/ulfaslak/infostop/pull/55))
-- **A user with no points** gets an empty label array. The other users get the same labels as without that user. Before, this failed with a `ValueError` (haversine), or read past the end of the array in the C++ step (euclidean). ([#57](https://github.com/ulfaslak/infostop/pull/57), [#74](https://github.com/ulfaslak/infostop/pull/74))
+- **A user with no points** gets an empty label array. The other users get the same labels as without that user. Before, this failed with a `ValueError` (haversine), or read past the end of the array in infostop's C++ part (euclidean). ([#57](https://github.com/ulfaslak/infostop/pull/57), [#74](https://github.com/ulfaslak/infostop/pull/74))
 - **Clearer errors.** These inputs now raise an `AssertionError` that says what is wrong:
   - An empty list: "There are no traces in the input data." Before, NumPy raised a `ValueError`. ([#55](https://github.com/ulfaslak/infostop/pull/55))
   - Only empty traces: "There are no points in the input data." Before, NumPy raised a `ValueError` (haversine), or infostop raised "No stop events found" (euclidean). ([#57](https://github.com/ulfaslak/infostop/pull/57))
