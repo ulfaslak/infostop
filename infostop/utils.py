@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import sys
+import threading
 
 import numpy as np
 from sklearn.neighbors import BallTree
@@ -17,6 +18,7 @@ from tqdm import tqdm
 # Infomap 2.15 and later send their log through Python's `logging`, and only when the
 # "infomap" logger has a handler of its own. Older versions print it from C++.
 _INFOMAP_LOGS_TO_PYTHON = hasattr(infomap, "enable_log")
+_INFOMAP_LOG_LOCK = threading.Lock()
 
 
 def pass_func(input, **kwargs):
@@ -25,33 +27,39 @@ def pass_func(input, **kwargs):
 
 @contextlib.contextmanager
 def _show_infomap_log(verbose):
-    """Show Infomap's log on stdout during one run, on Infomap 2.15 and later.
+    """Show Infomap's log on stdout while Infomap creates or runs a network.
 
-    Attaches a stream handler to the "infomap" logger, sets the logger to INFO and
-    turns off propagation (so that a root handler does not print each line again).
-    Afterwards, also if the run raises, it removes the handler and restores the
-    level and propagation. Does nothing if `verbose` is False, on Infomap 2.14 and
-    older (they print their log themselves unless `--silent`), or if the "infomap"
-    logger already has handlers (then the user's logging setup decides).
+    Only on Infomap 2.15 and later, with `verbose`. Attaches a stream handler to the
+    "infomap" logger, sets the logger to INFO and turns off propagation (so that a
+    root handler does not print each line again). Afterwards, also if Infomap
+    raises, it removes the handler and restores the level and propagation. If the
+    "infomap" logger already has handlers, it changes nothing: the user's logging
+    setup decides. On Infomap 2.14 and older, Infomap prints its log itself unless
+    `--silent`. A lock keeps two threads from changing the logger at the same time,
+    so `verbose=True` runs in different threads wait for each other.
 
-    Yields True if it attached the handler.
+    Yields True if Infomap's log goes through Python logging in the block.
     """
-    logger = logging.getLogger("infomap")
-    if not (verbose and _INFOMAP_LOGS_TO_PYTHON) or logger.handlers:
+    if not (verbose and _INFOMAP_LOGS_TO_PYTHON):
         yield False
         return
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    level, propagate = logger.level, logger.propagate
-    try:
-        logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
-        logger.propagate = False
-        yield True
-    finally:
-        logger.removeHandler(handler)
-        logger.setLevel(level)
-        logger.propagate = propagate
+    logger = logging.getLogger("infomap")
+    with _INFOMAP_LOG_LOCK:
+        if logger.handlers:
+            yield True
+            return
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        level, propagate = logger.level, logger.propagate
+        try:
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+            logger.propagate = False
+            yield True
+        finally:
+            logger.removeHandler(handler)
+            logger.setLevel(level)
+            logger.propagate = propagate
 
 
 def query_neighbors(coords, r2, distance_metric="haversine", weighted=False):

@@ -1,8 +1,11 @@
 import ctypes
 import logging
 import sys
+import threading
+import time
 import warnings
 
+import infomap
 import numpy as np
 import pytest
 
@@ -198,18 +201,73 @@ def test_verbose_restores_infomap_logger_when_infomap_raises(
 
 
 def test_verbose_false_attaches_no_handler(monkeypatch, infomap_logger):
+    # Neither while the Infomap network is created nor while it runs
     before = _logger_state(infomap_logger)
     during = []
-    run = utils.Infomap.run
+    real_infomap, real_run = utils.Infomap, utils.Infomap.run
 
-    def spy(self, *args, **kwargs):
+    def create(*args, **kwargs):
         during.append(_logger_state(infomap_logger))
-        return run(self, *args, **kwargs)
+        return real_infomap(*args, **kwargs)
 
-    monkeypatch.setattr(utils.Infomap, "run", spy)
+    def run(self, *args, **kwargs):
+        during.append(_logger_state(infomap_logger))
+        return real_run(self, *args, **kwargs)
+
+    monkeypatch.setattr(real_infomap, "run", run)
+    monkeypatch.setattr(utils, "Infomap", create)
     Infostop(verbose=False).fit_predict(_home_work_home())
 
-    assert during == [before]
+    assert during == [before, before]
+
+
+@pytest.mark.skipif(
+    not hasattr(infomap, "enable_log"), reason="infomap.enable_log is new in 2.15"
+)
+def test_verbose_after_infomap_enable_log(capfd, infomap_logger):
+    # `infomap.enable_log()` attaches its own stdout handler: the log is shown once,
+    # and starts on a new line, as with infostop's handler
+    infomap.enable_log()
+    try:
+        before = _logger_state(infomap_logger)
+        Infostop(verbose=True, num_trials=3).fit_predict(_home_work_home())
+        after = _logger_state(infomap_logger)
+    finally:
+        infomap.disable_log()
+
+    assert after == before
+    lines = capfd.readouterr().out.splitlines()
+    assert "    ... running Infomap..." in lines
+    assert sum("Trial 3/3" in line for line in lines) == 1
+
+
+@pytest.mark.skipif(
+    not utils._INFOMAP_LOGS_TO_PYTHON, reason="infostop attaches no handler here"
+)
+def test_concurrent_verbose_runs_restore_infomap_logger(monkeypatch, infomap_logger):
+    # Two threads must not both find the logger without handlers and then save
+    # each other's changes as the original state. Creating the handler is slowed
+    # down to widen the gap between the check and the change.
+    stream_handler = logging.StreamHandler
+
+    def slow_stream_handler(*args, **kwargs):
+        time.sleep(0.05)
+        return stream_handler(*args, **kwargs)
+
+    def show_log_for_a_while():
+        with utils._show_infomap_log(True):
+            time.sleep(0.1)
+
+    monkeypatch.setattr(logging, "StreamHandler", slow_stream_handler)
+    before = _logger_state(infomap_logger)
+    threads = [threading.Thread(target=show_log_for_a_while) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+        time.sleep(0.01)
+    for thread in threads:
+        thread.join()
+
+    assert _logger_state(infomap_logger) == before
 
 
 def test_verbose_leaves_a_users_infomap_handler_alone(capfd, infomap_logger):
