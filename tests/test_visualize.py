@@ -361,3 +361,45 @@ def test_folium_map_with_points_as_a_list():
     folmap.render_points(subsampling=0.5)
     folmap.render_heatmap(subsampling=0.5)
     assert "<html>" in folmap.m.get_root().render()
+
+
+def _on_the_antimeridian(walk):
+    """Two visits to one place on Taveuni (Fiji), on both sides of longitude 180.
+
+    With `walk`, a 3-point walk follows each visit. Without, the visits are two days
+    apart and every point is in a stop event.
+    """
+    rows, t = [], 0
+    for lon in (179.99999, -179.99999):
+        for _ in range(10):
+            rows.append([-16.8, lon, t])
+            t += 60
+        if walk:
+            for i in range(3):
+                rows.append([-16.8 + 0.01 * (i + 1), lon, t])
+                t += 60
+        else:
+            t += 2 * 86400
+    return np.array(rows, dtype=float)
+
+
+@pytest.mark.parametrize("walk", [True, False], ids=["walk", "no-moving-points"])
+def test_plot_map_centre_on_the_antimeridian(walk):
+    model = Infostop()
+    model.fit_predict(_on_the_antimeridian(walk))
+    for display_data in DISPLAY_DATA:
+        folmap = plot_map(model, display_data=display_data)
+        lat, lon = folmap.m.location
+        # Without moving points, "all_nonstationary" centres on the stop events
+        assert len(folmap.points) > 0 or (
+            not walk and display_data == "all_nonstationary"
+        )
+        assert lat == pytest.approx(-16.8, abs=0.05), display_data
+        assert abs(abs(lon) - 180) < 1e-4, display_data
+
+
+def test_folium_map_centre_on_the_antimeridian():
+    points = np.array([[-16.8, 179.99999], [-16.8, -179.99998], [-16.8, -179.99999]])
+    lat, lon = FoliumMap(points, np.array([0, 0, 0])).m.location
+    assert lat == -16.8
+    assert lon == pytest.approx(-179.99999, abs=1e-9)

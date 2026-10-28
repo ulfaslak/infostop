@@ -72,7 +72,7 @@ class FoliumMap:
         self.points = points
         self.labels = labels
         if location is None:
-            location = tuple(np.median(points, axis=0))
+            location = tuple(utils.median_lat_lon(points))
         map_kwargs = dict(location=location, zoom_start=zoom_start, tiles=tiles)
         old_folium = "API_key" in inspect.signature(folium.Map).parameters
         mapbox = None
@@ -308,7 +308,7 @@ def plot_map(
     # With nothing to show, center the map on the coordinates the model clustered
     location = None
     if len(points) == 0:
-        location = tuple(np.median(model._stat_coords, axis=0))
+        location = tuple(utils.median_lat_lon(model._stat_coords))
 
     folmap = FoliumMap(
         points=points,
