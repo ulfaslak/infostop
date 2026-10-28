@@ -69,7 +69,9 @@ The [documentation](https://infostop.readthedocs.io) has runnable examples and e
 ## Installation
 `pip install infostop`
 
-**macOS without Infomap wheels** (Intel Macs, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, and Infomap's build needs OpenMP unless you switch it off ([#77](https://github.com/ulfaslak/infostop/issues/77)). Install Infomap without OpenMP first, then infostop:
+**Python 3.9 and 3.10**: pip compiles Infomap 2.9.2, the last Infomap for these versions, because it has no wheels for them. This needs a C++ compiler.
+
+**macOS without Infomap wheels** (Intel Macs, x86_64 Pythons under Rosetta on Apple Silicon, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, and Infomap's build needs OpenMP unless you switch it off ([#77](https://github.com/ulfaslak/infostop/issues/77)). Install Infomap without OpenMP first, then infostop:
 ```Bash
 $ OPENMP=0 pip install infomap
 $ pip install infostop
@@ -80,6 +82,12 @@ If you use Homebrew and your Python runs natively (not an x86_64 Python under Ro
 
 - pin `infostop==0.1.9` and `infomap==1.0.6`, or
 - use infostop 0.2.0 with Infomap 1.0.6 and `num_trials=1`. This keeps the `label_singleton=False` change.
+
+Infomap 1.0.6 has no wheels, so pip compiles it, which needs a C++ compiler. Its build also needs `pkg_resources`, which setuptools 82 removed, so install it like this (for the second option, use `infostop==0.2.0`):
+```Bash
+$ pip install "setuptools<82" pybind11
+$ pip install --no-build-isolation infostop==0.1.9 infomap==1.0.6
+```
 
 The [changelog](https://github.com/ulfaslak/infostop/blob/master/CHANGELOG.md#020-2026-10-28) has the details.
 
