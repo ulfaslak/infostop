@@ -152,11 +152,17 @@ def test_median_lat_lon_of_points_around_the_globe_is_np_median(lons):
     assert np.array_equal(utils.median_lat_lon(coords), np.median(coords, axis=0))
 
 
-def test_median_lat_lon_of_float32_across_the_antimeridian_is_taken_in_float64():
-    # A float32 longitude plus 360 would lose its last digits
-    coords = np.array(
-        [[-16.8, 179.99999], [-16.8, -179.99998], [-16.8, -179.99999]], dtype=np.float32
-    )
+@pytest.mark.parametrize(
+    "lons",
+    [
+        [179.99999, -179.99998, -179.99999],
+        [139.69171, -122.41941],
+    ],
+    ids=["taveuni", "sf-tokyo"],
+)
+def test_median_lat_lon_of_float32_across_the_antimeridian_is_taken_in_float64(lons):
+    # In float32, -122.41941 + 360 and the median - 360 lose their last digits
+    coords = np.column_stack([np.full(len(lons), -16.8), lons]).astype(np.float32)
 
     lat, lon = utils.median_lat_lon(coords)
 
