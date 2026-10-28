@@ -76,7 +76,39 @@ scikit-learn, folium and tqdm. The required versions are in ``setup.py``.
 
 Infostop includes a small C++ extension. If pip finds no prebuilt wheel for
 your Python version and platform, it compiles the extension, and this needs a
-C++ compiler. The ``README.md`` in the `public repository`_ has notes for
+C++ compiler.
+
+Infomap can need a compiler even when Infostop does not:
+
+- **Python 3.9 and 3.10.** pip compiles Infomap 2.9.2, the last Infomap for
+  these versions, because it has no wheels for them. This needs a C++
+  compiler.
+- **macOS without Infomap wheels:** Intel Macs, x86_64 Pythons under Rosetta
+  on Apple Silicon, and Apple Silicon Macs older than macOS 15, on Python 3.11
+  and later. Infomap's build needs OpenMP unless you switch it off, so install
+  Infomap without OpenMP first, then Infostop:
+
+  .. code-block:: bash
+
+     OPENMP=0 pip install infomap
+     pip install infostop
+
+**Labels of infostop 0.1.9.** Since 0.2.0, some labels differ from those of
+0.1.9 (the `changelog`_ says where). To get the labels of 0.1.9, use the same
+operating system as before, and Infomap 1.0.6. Infomap 1.0.6 has no wheels, so
+pip compiles it, which needs a C++ compiler. Its build also needs
+``pkg_resources``, which setuptools 82 removed, so install it like this:
+
+.. code-block:: bash
+
+   pip install "setuptools<82" pybind11
+   pip install --no-build-isolation infostop==0.1.9 infomap==1.0.6
+
+To stay on infostop 0.2.0, use ``infostop==0.2.0`` in the second command and
+pass ``num_trials=1``. This keeps the change for ``label_singleton=False``.
+
+The `installation notes`_ in the ``README.md`` have more details, such as
+Homebrew's ``libomp`` on macOS. The ``README.md`` also has notes for
 development installs.
 
 Cite
@@ -96,4 +128,6 @@ You can contribute to the `public repository`_ and `report issues`_ there.
 .. _`Aslak & Alessandretti (2020)`: https://arxiv.org/abs/2003.14370
 .. _`Infomap`: https://www.mapequation.org
 .. _`public repository`: https://github.com/ulfaslak/infostop
+.. _`changelog`: https://github.com/ulfaslak/infostop/blob/master/CHANGELOG.md#020-2026-10-28
+.. _`installation notes`: https://github.com/ulfaslak/infostop#installation
 .. _`report issues`: https://github.com/ulfaslak/infostop/issues
