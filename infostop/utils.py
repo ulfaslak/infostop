@@ -161,9 +161,8 @@ def infomap_communities(
             print("done")
     else:
         partition = {}
-
-    if verbose:
-        print(f"Found {len(set(partition.values()))} stop locations")
+        if verbose:
+            print("skipped (no nodes)")
 
     return partition, singleton_nodes
 
@@ -253,9 +252,15 @@ def label_network(
     )
 
     # Cast the partition as a vector of labels like `[0, 1, 0, 3, 0, 0, 2, ...]`
-    return np.array(
+    labels = np.array(
         [partition[n] if n in partition else -1 for n in range(len(node_idx_neighbors))]
     )
+
+    # Count the final stop locations: Infomap's modules and the labelled singletons
+    if verbose:
+        print(f"Found {len(np.unique(labels[labels != -1]))} stop locations")
+
+    return labels
 
 
 def max_pdist(points):
