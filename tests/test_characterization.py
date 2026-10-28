@@ -151,6 +151,45 @@ def test_infostop_single_user(metric, with_time, expected):
     assert partition(labels) == expected
 
 
+@pytest.mark.parametrize(
+    "first_longitude, middle_longitude",
+    [(179.99999, -179.99999), (-179.99999, 179.99999)],
+    ids=["east-first", "west-first"],
+)
+def test_infostop_repeated_antimeridian_visits_share_one_label(
+    first_longitude, middle_longitude
+):
+    longitudes = (
+        [first_longitude] * 20 + [middle_longitude] * 20 + [first_longitude] * 20
+    )
+    trace = np.column_stack([np.full(60, 10.0), longitudes, 60.0 * np.arange(60)])
+
+    labels = Infostop().fit_predict(trace)
+
+    assert labels[0] >= 0
+    assert np.all(labels == labels[0])
+
+
+def test_western_stop_keeps_one_label_with_min_spacial_resolution():
+    # Two visits to one place in New York. The first event's median lies exactly
+    # halfway between two 1e-5 cells; a median off in its last bit is rounded into
+    # the other cell, away from the second visit, and the place gets two labels.
+    trace = np.array(
+        [
+            [40.7, -73.98121, 0],
+            [40.7, -73.98122, 60],
+            [40.8, -73.0, 120],
+            [40.7, -73.98121, 180],
+            [40.7, -73.98121, 240],
+        ]
+    )
+    model = Infostop(r1=10, r2=0.5, min_staying_time=1, min_spacial_resolution=1e-5)
+
+    labels = model.fit_predict(trace)
+
+    assert partition(labels) == [(0, 2), (-1, 1), (0, 2)]
+
+
 @pytest.mark.parametrize("metric", ["haversine", "euclidean"])
 @pytest.mark.parametrize("with_time", [True, False])
 def test_infostop_multi_user(metric, with_time):
