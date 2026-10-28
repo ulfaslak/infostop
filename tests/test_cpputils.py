@@ -161,13 +161,26 @@ def test_haversine_median_wraps_across_the_antimeridian(longitudes, with_time):
     assert abs(abs(stat_coords[0][1]) - 180.0) < 1e-4
 
 
-def test_haversine_median_preserves_non_wrapped_longitudes():
-    coords = [[10.0, 12.5 + i * 1e-5] for i in range(4)]
-    stat_coords, event_map = events(coords, r1=10, metric="haversine")
+@pytest.mark.parametrize(
+    "longitudes",
+    [
+        [12.50001, 12.50002, 12.50004, 12.50003],
+        [-73.98121, -73.98122],
+        [-73.98121, -73.98123, -73.98122],
+        [-0.00057, 0.00001, -0.00003, 0.00002],
+    ],
+    ids=["east", "west-even", "west-odd", "greenwich"],
+)
+def test_haversine_median_away_from_the_antimeridian_is_the_plain_median(longitudes):
+    # Bit for bit: `Infostop` rounds event medians by `min_spacial_resolution`, and
+    # the median of two 5-decimal longitudes lies exactly on a rounding boundary.
+    coords = [[10.0, lon] for lon in longitudes]
+    stat_coords, event_map = events(coords, r1=100, metric="haversine")
 
-    assert event_map == [0, 0, 0, 0]
-    assert stat_coords[0][0] == pytest.approx(10.0)
-    assert stat_coords[0][1] == pytest.approx(12.500015)
+    s = sorted(longitudes)
+    plain = 0.5 * (s[(len(s) - 1) // 2] + s[len(s) // 2])
+    assert event_map == [0] * len(longitudes)
+    assert stat_coords[0][1] == plain
 
 
 def test_haversine_median_tracks_largest_gap_as_points_arrive():
