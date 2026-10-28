@@ -6,6 +6,10 @@
 
 - **Tile advice.** The `tiles` docs of `plot_map` and `FoliumMap` no longer suggest `"CartoDBpositron"`. CARTO now requires an API key for these tiles, and without a key every tile shows "API KEY REQUIRED". The default, `"OpenStreetMap"`, needs no key. ([#95](https://github.com/ulfaslak/infostop/pull/95))
 
+### Other changes
+
+- **`verbose=True`: `Found N stop locations` counts every stop location in the labels.** Before, it counted only the stop locations that Infomap groups. It left out the stop locations that get a label without Infomap, because no other coordinate is within `r2`: with the default `label_singleton=True`, often a place visited once. So the count was too low, and it could say `Found 0 stop locations` when the labels had stop locations. When Infomap does not run, the line before now ends with `skipped (no nodes)`, so the count starts its own line. Labels do not change. ([#94](https://github.com/ulfaslak/infostop/pull/94))
+
 ## 0.2.0 (2026-10-28)
 
 This is the first release since 0.1.9 (February 2022). This entry lists everything that changed since 0.1.9.
