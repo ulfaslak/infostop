@@ -224,10 +224,11 @@ only if the time between them is at most ``max_time_between`` (default
 .. note::
 
    ``compute_intervals`` does not get ``max_time_between`` from the model.
-   If you fitted the model with another value, pass the same value here, for
-   example ``compute_intervals(labels, times, max_time_between=86_400_000)``
-   for timestamps in milliseconds. With the default, one stay can be split
-   into many intervals. See
+   If you fitted the model with another value, pass the same value here. For
+   example, with timestamps in milliseconds, use
+   ``compute_intervals(labels, times, max_time_between=86_400_000)``. With
+   the default, every gap longer than 86400 milliseconds (86.4 seconds) would
+   end an interval. See
    `issue #83 <https://github.com/ulfaslak/infostop/issues/83>`_.
 
 Plot stop locations on a map
