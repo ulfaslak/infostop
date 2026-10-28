@@ -200,25 +200,35 @@ Stop and move intervals
 :func:`infostop.compute_intervals` turns the labels of one trace into a list
 of intervals. Each interval is a row ``[label, start_time, end_time]`` and
 covers a run of consecutive points with the same label. Moves are the
-intervals with label ``-1``.
+intervals with label ``-1``. For the trace above:
 
-.. code-block:: python
+.. code-block:: pycon
 
-   from infostop import compute_intervals
+   >>> from infostop import compute_intervals
+   >>> intervals = compute_intervals(labels, data[:, 2])
+   >>> for label, start, end in intervals:
+   ...     print(label, start, end)
+   1.0 0.0 540.0
+   -1.0 600.0 720.0
+   2.0 780.0 1320.0
+   -1.0 1380.0 1500.0
+   1.0 1560.0 2100.0
 
-   intervals = compute_intervals(labels, data[:, 2])
+Here the labels are floats, because the timestamps are.
 
 For several traces, call it once per trace, with that trace's labels and
 timestamps. Two consecutive points with the same label stay in one interval
 only if the time between them is at most ``max_time_between`` (default
-86400). Use the same value as for the model that produced the labels.
+86400).
 
 .. note::
 
-   ``compute_intervals`` has known bugs, reported in
-   `issue #15 <https://github.com/ulfaslak/infostop/issues/15>`_. For
-   example, if a trace ends at a stop, that last stop is missing from the
-   result. Check the issue for the current status before you rely on it.
+   ``compute_intervals`` does not get ``max_time_between`` from the model.
+   If you fitted the model with another value, pass the same value here, for
+   example ``compute_intervals(labels, times, max_time_between=86_400_000)``
+   for timestamps in milliseconds. With the default, one stay can be split
+   into many intervals. See
+   `issue #83 <https://github.com/ulfaslak/infostop/issues/83>`_.
 
 Plot stop locations on a map
 ----------------------------
@@ -249,12 +259,6 @@ that are not labeled ``-1``). ``"all"`` draws every input point,
 ``"all_stationary"`` only the input points that belong to a stop, and
 ``"all_nonstationary"`` only the input points labeled ``-1``. Each location
 is drawn once.
-
-.. note::
-
-   Until `issue #35 <https://github.com/ulfaslak/infostop/issues/35>`_ is
-   fixed, ``display_data`` has no effect: the map always shows what
-   ``"unique_stationary"`` shows.
 
 .. _euclidean:
 
