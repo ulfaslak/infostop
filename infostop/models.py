@@ -318,6 +318,12 @@ class Infostop:
     def compute_label_medians(self):
         """Compute the median location of inferred labels.
 
+        The median of a label is the coordinate-wise median of its stop event medians.
+        With 'haversine', a label that lies on both sides of longitude +-180 gets its
+        median longitude across that line, in (-180, 180]. Such a label has
+        longitudes that span more than 180 degrees, and less once the negative ones
+        are moved up by 360.
+
         Returns
         -------
             label_medians : dict, {label: [lat, lon]}
@@ -340,11 +346,15 @@ class Infostop:
         # Get unique labels
         unique_labels = np.unique(labels_and_coords[:, 0]).astype(int)
 
-        # For each unique label, take the median of its points
+        # For each unique label, take the median of its points. Latitude and
+        # longitude also have a median across the antimeridian.
+        median = (
+            utils.median_lat_lon
+            if self._distance_metric == "haversine"
+            else lambda points: np.median(points, axis=0)
+        )
         unique_label_medians = [
-            np.median(
-                labels_and_coords[labels_and_coords[:, 0] == label, 1:], axis=0
-            ).tolist()
+            median(labels_and_coords[labels_and_coords[:, 0] == label, 1:]).tolist()
             for label in unique_labels
         ]
 
