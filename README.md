@@ -69,7 +69,7 @@ The [documentation](https://infostop.readthedocs.io) has runnable examples and e
 ## Installation
 `pip install infostop`
 
-**Python 3.9 and 3.10**: on these versions, pip installs Infomap 2.9.2, the last Infomap for them. It has no wheels for them, so pip compiles it, which needs a C++ compiler.
+**Python 3.9 and 3.10**: pip compiles Infomap 2.9.2, the last Infomap for these versions, because it has no wheels for them. This needs a C++ compiler.
 
 **macOS without Infomap wheels** (Intel Macs, x86_64 Pythons under Rosetta on Apple Silicon, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, and Infomap's build needs OpenMP unless you switch it off ([#77](https://github.com/ulfaslak/infostop/issues/77)). Install Infomap without OpenMP first, then infostop:
 ```Bash
