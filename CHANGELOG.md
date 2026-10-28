@@ -81,7 +81,7 @@ To get the labels of 0.1.9 with 0.2.0, keep Infomap 1.0.6, pass `num_trials=1`, 
 
 ### Documentation
 
-- The documentation on [Read the Docs](https://infostop.readthedocs.io) is rewritten for the current API, with examples that are tested. ([#44](https://github.com/ulfaslak/infostop/pull/44))
+- The documentation on [Read the Docs](https://infostop.readthedocs.io) is rewritten for the current API, with examples that are tested. ([#44](https://github.com/ulfaslak/infostop/pull/44), [#88](https://github.com/ulfaslak/infostop/pull/88))
 - The docstrings give the units of each parameter: with `distance_metric="haversine"`, `r1` and `r2` are in meters; the time parameters are in the units of the time column, and their defaults assume seconds. ([#52](https://github.com/ulfaslak/infostop/pull/52))
 - Three parameter descriptions were wrong; the code did not change. ([#52](https://github.com/ulfaslak/infostop/pull/52))
   - `max_time_between` was described as the longest duration of a stop. It is the longest time between two consecutive points in a stop.
