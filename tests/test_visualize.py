@@ -1,6 +1,7 @@
 import inspect
 import json
 import re
+import warnings
 
 import folium
 import numpy as np
@@ -273,32 +274,42 @@ def _render(**kwargs):
     return plot_map(model, **kwargs).m.get_root().render()
 
 
-@pytest.mark.parametrize(
-    "tiles, credit",
-    [
-        ("https://tile.opentopomap.org/{z}/{x}/{y}.png", "tile.opentopomap.org"),
-        (
-            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            "tile.openstreetmap.org",
-        ),
-        ("http://localhost:8080/{z}/{x}/{y}.png", "localhost:8080"),
-        (
-            "https://me:secret@tiles.example.com/{z}/{x}/{y}.png?k=secret",
-            "tiles.example.com",
-        ),
-    ],
-)
+TILE_URL_CREDITS = [
+    ("https://tile.opentopomap.org/{z}/{x}/{y}.png", "Tiles from tile.opentopomap.org"),
+    (
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "Tiles from tile.openstreetmap.org",
+    ),
+    (
+        "//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "Tiles from tile.openstreetmap.org",
+    ),
+    (
+        "https://maps-{s}.onemap.sg/v3/Default/{z}/{x}/{y}.png",
+        "Tiles from maps-{s}.onemap.sg",
+    ),
+    ("http://localhost:8080/{z}/{x}/{y}.png?key=s3cr", "Tiles from localhost:8080"),
+    ("https://[fe80::1/{z}/{x}/{y}.png", "Tiles from [fe80::1"),
+    ("/tiles/{z}/{x}/{y}.png", "Custom tiles"),
+    # A user name and password, also ones that folium or a URL parser would split
+    ("https://alice:s3cr@tiles.example.com/{z}/{x}/{y}.png", "Custom tiles"),
+    ("https://alice:s3cr#x@tiles.example.com/{z}/{x}/{y}.png", "Custom tiles"),
+    ("https://alice:s3cr/x@tiles.example.com/{z}/{x}/{y}.png", "Custom tiles"),
+    ("https://alice:s3cr?x@tiles.example.com/{z}/{x}/{y}.png", "Custom tiles"),
+    ("https://alice:s3cr@x@tiles.example.com/{z}/{x}/{y}.png", "Custom tiles"),
+]
+
+
+@pytest.mark.parametrize("tiles, credit", TILE_URL_CREDITS)
 @pytest.mark.parametrize("attr", [None, "", "© OpenTopoMap (CC-BY-SA)"])
 def test_plot_map_credit_of_a_tile_url(tiles, credit, attr):
     # A tile URL is credited with `attr`, or else with its host, not with infostop
     html = _render(tiles=tiles, attr=attr)
-    assert _credits(html) == [attr or f"Tiles from {credit}"]
+    assert _credits(html) == [attr or credit]
     assert "Infostop" not in html
-    assert html.count("secret") == tiles.count("secret")
-
-
-def test_plot_map_credit_of_a_tile_url_without_host():
-    assert _credits(_render(tiles="/tiles/{z}/{x}/{y}.png")) == ["Custom tiles"]
+    # Nothing secret from the URL anywhere else in the page
+    assert html.count("s3cr") == tiles.count("s3cr")
+    assert html.count("alice") == tiles.count("alice")
 
 
 @pytest.mark.filterwarnings("ignore:CartoDB tiles now require an API key")
@@ -358,11 +369,35 @@ def test_tiles_named_in_the_docs_need_no_key(documented):
         assert not xyzservices.providers.query_name(query).requires_token(), name
 
 
-@pytest.mark.parametrize("attr", [None, "My credit"])
-def test_plot_map_with_unknown_tiles(attr):
+def test_plot_map_with_unknown_tiles():
     model, _, _ = _fitted("infostop")
     with pytest.raises(ValueError):
-        plot_map(model, tiles="OpenStreetMapp", attr=attr)
+        plot_map(model, tiles="OpenStreetMapp")
+    # With `attr`, folium would take the name for a tile URL
+    with pytest.raises(ValueError, match="knows no tiles named 'OpenStreetMapp'"):
+        plot_map(model, tiles="OpenStreetMapp", attr="My credit")
+
+
+@pytest.mark.parametrize("attr", [None, "My credit"])
+def test_plot_map_attr_adds_no_warning(attr):
+    # The check of the tile name does not repeat folium's warnings
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _render(tiles="CartoDB positron", attr=attr)
+    with warnings.catch_warnings(record=True) as without_attr:
+        warnings.simplefilter("always")
+        _render(tiles="CartoDB positron")
+    assert [str(w.message) for w in caught] == [str(w.message) for w in without_attr]
+
+
+def test_plot_map_attr_with_a_provider_object():
+    xyzservices = pytest.importorskip("xyzservices")
+    try:
+        folium.Map(tiles=xyzservices.providers.OpenTopoMap)
+    except AttributeError:
+        pytest.skip("folium < 0.14 takes no provider objects")
+    html = _render(tiles=xyzservices.providers.OpenTopoMap, attr="My credit")
+    assert _credits(html) == ["My credit"]
 
 
 @pytest.mark.skipif(OLD_FOLIUM, reason="folium < 0.9 uses its own Mapbox tiles")
@@ -529,7 +564,7 @@ def test_plot_map_api_key_on_old_folium():
     # Tiles that need a key and that folium 0.7 / 0.8 do not know
     with pytest.raises(ValueError, match="only on folium 0.9 and newer"):
         plot_map(model, tiles="Thunderforest.OpenCycleMap", API_key="my-token")
-    # Other errors stay folium's own
+    # Other errors do not blame API_key
     for tiles, API_key in [
         ("Thunderforest.OpenCycleMap", None),
         ("OpenStreetMapp", "k"),

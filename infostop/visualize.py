@@ -1,5 +1,5 @@
 import inspect
-from urllib.parse import urlsplit
+import re
 import warnings
 
 import folium
@@ -71,9 +71,39 @@ def _url_credit(url):
     folium requires a credit for a custom URL. The host names where the tiles come
     from without claiming to be their author.
     """
-    # No user name or password, and no "{s}" subdomain placeholder
-    host = urlsplit(url).netloc.rpartition("@")[2].replace("{s}.", "")
+    match = re.match(r"(?:[A-Za-z][A-Za-z0-9+.-]*:)?//(.*)", url)
+    if match is None:
+        return "Custom tiles"
+    # The URL up to the tile coordinates
+    head = re.split(r"\{[xyz]\}", match.group(1), maxsplit=1)[0]
+    if "@" in head:
+        # Likely a user name and password, which may hold "/", "?" or "#" too
+        return "Custom tiles"
+    host = re.split(r"[/?#]", head, maxsplit=1)[0]
+    # Without the "{s}" subdomain placeholder
+    host = re.sub(r"^\{s\}\.", "", host)
     return f"Tiles from {host}" if host else "Custom tiles"
+
+
+def _named_tile_layer(tiles, **kwargs):
+    """Return folium's tile layer for the tile name `tiles`, made without a credit.
+
+    Raise if folium does not know the name. With a credit, folium takes an unknown
+    tile name for a tile URL and shows no tiles. Without one, it raises.
+    """
+    try:
+        with warnings.catch_warnings():
+            # For example "CartoDB tiles now require an API key": folium.Map warns
+            warnings.simplefilter("ignore")
+            return folium.TileLayer(tiles=tiles, **kwargs)
+    except ValueError as error:
+        # folium's error says that an attribution is missing
+        if "attribution" not in str(error):
+            raise
+        raise ValueError(
+            f"folium {folium.__version__} knows no tiles named {tiles!r}, and it is "
+            "not a tile URL with {z}, {x} and {y}."
+        ) from error
 
 
 class FoliumMap:
@@ -100,8 +130,8 @@ class FoliumMap:
             Credit for the tiles, shown in the corner of the map. Give it when `tiles`
             is a tile URL, for example `attr="© OpenTopoMap (CC-BY-SA)"`. By default,
             named tiles show their own credit, and a tile URL shows
-            "Tiles from <host>". folium 0.9 to 0.14 always show the own credit of
-            named tiles.
+            "Tiles from <host>". folium 0.9 to 0.14 ignore `attr` for named tiles,
+            except for tiles that get `API_key`.
 
     Example
     -------
@@ -142,7 +172,7 @@ class FoliumMap:
         elif isinstance(tiles, str) and old_folium:
             # folium < 0.9 shows the attribution of named tiles only if it is passed
             try:
-                tiles_attr = folium.TileLayer(tiles=tiles, API_key=API_key).attr
+                tiles_attr = _named_tile_layer(tiles, API_key=API_key).attr
             except ValueError as error:
                 # folium < 0.9 does not know these tiles
                 if API_key and _keyed_provider(tiles) is not None:
@@ -154,11 +184,7 @@ class FoliumMap:
             map_kwargs["attr"] = attr or tiles_attr
         elif attr:
             if isinstance(tiles, str):
-                # With an attribution, folium takes an unknown tile name for a tile
-                # URL and shows no tiles. Without one, it raises for an unknown name.
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    folium.TileLayer(tiles=tiles)
+                _named_tile_layer(tiles)
             map_kwargs["attr"] = attr
         self.m = folium.Map(**map_kwargs)
         if keyed is not None:
@@ -327,8 +353,8 @@ def plot_map(
             Credit for the tiles, shown in the corner of the map. Give it when `tiles`
             is a tile URL, for example `attr="© OpenTopoMap (CC-BY-SA)"`. By default,
             named tiles show their own credit, and a tile URL shows
-            "Tiles from <host>". folium 0.9 to 0.14 always show the own credit of
-            named tiles.
+            "Tiles from <host>". folium 0.9 to 0.14 ignore `attr` for named tiles,
+            except for tiles that get `API_key`.
 
     Returns
     -------
