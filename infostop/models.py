@@ -318,6 +318,11 @@ class Infostop:
     def compute_label_medians(self):
         """Compute the median location of inferred labels.
 
+        The median of a label is the coordinate-wise median of its stop event medians.
+        With 'haversine', a label whose longitudes span more than 180 degrees is taken
+        to lie on both sides of longitude +-180, and its median longitude is taken
+        across that line, in (-180, 180].
+
         Returns
         -------
             label_medians : dict, {label: [lat, lon]}

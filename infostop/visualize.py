@@ -49,8 +49,9 @@ class FoliumMap:
         API_key : str
             Mapbox API key.
         location : tuple of floats
-            Center of the map. Default is the median of `points`, so it must be given
-            if `points` is empty.
+            Center of the map. Default is the median of `points` (across longitude
+            +-180 if the points lie on both sides of it), so it must be given if
+            `points` is empty.
 
     Example
     -------
