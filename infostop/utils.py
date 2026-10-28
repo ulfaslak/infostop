@@ -39,8 +39,11 @@ def median_lat_lon(coords):
     lon = coords[:, 1]
     span = lon.max() - lon.min()
     if span > 180:
+        # In float64, as a float32 longitude plus 360 would lose its last digits
+        lon = lon.astype(float)
         shifted = np.where(lon < 0, lon + 360, lon)
         if shifted.max() - shifted.min() < span:
+            median = median.astype(float)
             median[1] = np.median(shifted)
             if median[1] > 180:
                 median[1] -= 360

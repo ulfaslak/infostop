@@ -107,6 +107,8 @@ def test_euclidean_label_medians_are_not_wrapped():
         ([-179.9, 179.8, 179.7], 179.8),
         ([180.0, -180.0], 180.0),
         ([-180.0, -180.0], -180.0),
+        # San Francisco and Tokyo: closer across the Pacific than across Greenwich
+        ([139.69, -122.42], -171.365),
     ],
 )
 def test_median_lat_lon_across_the_antimeridian(lons, expected):
@@ -148,3 +150,14 @@ def test_median_lat_lon_of_points_around_the_globe_is_np_median(lons):
     coords = np.column_stack([np.linspace(-80, 80, len(lons)), lons])
 
     assert np.array_equal(utils.median_lat_lon(coords), np.median(coords, axis=0))
+
+
+def test_median_lat_lon_of_float32_across_the_antimeridian_is_taken_in_float64():
+    # A float32 longitude plus 360 would lose its last digits
+    coords = np.array(
+        [[-16.8, 179.99999], [-16.8, -179.99998], [-16.8, -179.99999]], dtype=np.float32
+    )
+
+    lat, lon = utils.median_lat_lon(coords)
+
+    assert lon == utils.median_lat_lon(coords.astype(float))[1]

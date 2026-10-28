@@ -320,8 +320,9 @@ class Infostop:
 
         The median of a label is the coordinate-wise median of its stop event medians.
         With 'haversine', a label that lies on both sides of longitude +-180 gets its
-        median longitude across that line, in (-180, 180] (see
-        `infostop.utils.median_lat_lon`).
+        median longitude across that line, in (-180, 180]. Such a label has
+        longitudes that span more than 180 degrees, and less once the negative ones
+        are moved up by 360.
 
         Returns
         -------
