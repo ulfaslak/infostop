@@ -14,6 +14,9 @@ HOME = (55.70, 12.50)
 WORK = (55.71, 12.52)
 SHOP = (55.73, 12.56)
 
+# folium 0.7 and 0.8 have their own Mapbox tiles, which take `API_key`
+OLD_FOLIUM = "API_key" in inspect.signature(folium.Map).parameters
+
 
 def _visit(rng, location, t0, n=30):
     """`n` points scattered ~2 m around `location`, one per minute from `t0`."""
@@ -292,10 +295,7 @@ def test_plot_map_with_unknown_tiles():
         plot_map(model, tiles="OpenStreetMapp")
 
 
-@pytest.mark.skipif(
-    "API_key" in inspect.signature(folium.Map).parameters,
-    reason="folium < 0.9 uses its own Mapbox tiles",
-)
+@pytest.mark.skipif(OLD_FOLIUM, reason="folium < 0.9 uses its own Mapbox tiles")
 def test_plot_map_mapbox_api_key():
     xyzservices = pytest.importorskip("xyzservices")
     mapbox = xyzservices.providers.MapBox(accessToken="my-token")
@@ -325,11 +325,151 @@ def test_plot_map_without_api_key(tiles, API_key):
         assert isinstance(plot_map(model, tiles=tiles, API_key=API_key).m, folium.Map)
 
 
-def test_plot_map_api_key_unused_by_other_tiles():
-    # The key is not written into the page when the tiles do not need it
+@pytest.mark.parametrize(
+    "tiles",
+    [
+        "OpenStreetMap",
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        None,
+        "provider without a key",
+        "provider with two keys",
+    ],
+)
+def test_plot_map_api_key_unused_by_other_tiles(tiles):
+    # Tiles that need no key, or more than one, give the same map (or error) with
+    # and without a key
+    if tiles == "provider without a key":
+        xyzservices = pytest.importorskip("xyzservices")
+        # 512 px tiles: folium itself drops these options, so the page shows which
+        # code built the tile layer
+        tiles = xyzservices.TileProvider(
+            name="Test.NoKey",
+            url="https://tiles.example.com/{z}/{x}/{y}.png",
+            attribution="(C) Test",
+            tileSize=512,
+            zoomOffset=-1,
+        )
+    elif tiles == "provider with two keys":
+        xyzservices = pytest.importorskip("xyzservices")
+        # Like the old HERE tiles in xyzservices <= 2025.4
+        tiles = xyzservices.TileProvider(
+            name="Test.TwoKeys",
+            url="https://tiles.example.com/{z}/{x}/{y}.png?id={app_id}&code={app_code}",
+            attribution="(C) Test",
+            app_id="<insert your app_id here>",
+            app_code="<insert your app_code here>",
+        )
     model, _, _ = _fitted("infostop")
-    html = plot_map(model, API_key="my-token").m.get_root().render()
-    assert "my-token" not in html
+    results = []
+    for API_key in [None, "my-token"]:
+        try:
+            html = plot_map(model, tiles=tiles, API_key=API_key).m.get_root().render()
+        except Exception as error:  # folium < 0.14 takes no provider objects
+            results.append(type(error))
+            continue
+        assert "my-token" not in html
+        # folium gives each element a random id
+        results.append(re.sub(r"_[0-9a-f]{32}", "_ID", html))
+    assert results[0] == results[1]
+
+
+# Tile sets that need a key, and the field of the provider that the key goes into
+KEYED_TILES = [
+    ("Thunderforest.OpenCycleMap", "apikey"),
+    ("MapTiler.Streets", "key"),
+    ("Jawg.Streets", "accessToken"),
+    ("TomTom.Basic", "apikey"),
+    ("CartoDB positron", "apikey"),
+]
+
+
+def _render_with_layer_control(tiles, API_key):
+    model, _, _ = _fitted("infostop")
+    folmap = plot_map(model, tiles=tiles, API_key=API_key)
+    # The layer control shows the name of the tile layer
+    folium.LayerControl().add_to(folmap.m)
+    return folmap.m.get_root().render()
+
+
+@pytest.mark.skipif(OLD_FOLIUM, reason="folium < 0.9 does not know these tiles")
+@pytest.mark.parametrize("as_object", [False, True])
+@pytest.mark.parametrize("tiles, field", KEYED_TILES)
+def test_plot_map_api_key_for_tiles_that_need_one(tiles, field, as_object):
+    xyzservices = pytest.importorskip("xyzservices")
+    provider = xyzservices.providers.query_name(tiles)
+    if not provider.requires_token():
+        pytest.skip(f"{tiles} needs no key in xyzservices {xyzservices.__version__}")
+    html = _render_with_layer_control(provider if as_object else tiles, "my-token")
+    tile_urls = re.findall(r"L\.tileLayer\(\s*[\"']([^\"']+)", html)
+    url = provider(**{field: "my-token"}).build_url(
+        fill_subdomain=False, scale_factor="{r}"
+    )
+    assert tile_urls == [url]
+    # The key is only in the tile URL
+    assert html.count("my-token") == 1
+    # The layer control lists the layer under the name folium gives provider layers
+    assert re.search(rf"\"{provider.name.replace('.', '').lower()}\"\s*:", html)
+    links = re.findall(r'href="([^"]+)"', provider.html_attribution)
+    assert links and all(link in html for link in links)
+    # The tile options of the provider
+    assert re.search(rf"\bmaxZoom\"?: {provider['max_zoom']}\b", html)
+    if "subdomains" in provider:
+        assert re.search(rf"\bsubdomains\"?: \"{provider['subdomains']}\"", html)
+    if "tileSize" in provider:
+        assert re.search(rf"\btileSize\"?: {provider['tileSize']}\b", html)
+        assert re.search(rf"\bzoomOffset\"?: {provider['zoomOffset']}\b", html)
+
+
+@pytest.mark.skipif(OLD_FOLIUM, reason="folium < 0.9 does not use the key here")
+def test_plot_map_api_key_with_every_tile_option():
+    xyzservices = pytest.importorskip("xyzservices")
+    provider = xyzservices.TileProvider(
+        name="Test.Keyed",
+        url="https://{s}.tiles.example.com/{z}/{x}/{y}{r}.png?token={token}",
+        attribution="(C) Test",
+        token="<insert your token here>",
+        min_zoom=3,
+        max_zoom=15,
+        subdomains="pq",
+        tileSize=512,
+        zoomOffset=-1,
+    )
+    html = _render_with_layer_control(provider, "my-token")
+    tile_urls = re.findall(r"L\.tileLayer\(\s*[\"']([^\"']+)", html)
+    assert tile_urls == [
+        "https://{s}.tiles.example.com/{z}/{x}/{y}{r}.png?token=my-token"
+    ]
+    assert html.count("my-token") == 1
+    assert re.search(r"\"testkeyed\"\s*:", html)
+    assert "(C) Test" in html
+    for option, value in [
+        ("minZoom", 3),
+        ("maxZoom", 15),
+        ("subdomains", '"pq"'),
+        ("tileSize", 512),
+        ("zoomOffset", -1),
+    ]:
+        assert re.search(rf"\b{option}\"?: {value}", html), option
+
+
+@pytest.mark.skipif(not OLD_FOLIUM, reason="folium >= 0.9 uses the key")
+def test_plot_map_api_key_on_old_folium():
+    pytest.importorskip("xyzservices")
+    model, _, _ = _fitted("infostop")
+    # Tiles that need a key and that folium 0.7 / 0.8 do not know
+    with pytest.raises(ValueError, match="only on folium 0.9 and newer"):
+        plot_map(model, tiles="Thunderforest.OpenCycleMap", API_key="my-token")
+    # Other errors stay folium's own
+    for tiles, API_key in [
+        ("Thunderforest.OpenCycleMap", None),
+        ("OpenStreetMapp", "k"),
+    ]:
+        with pytest.raises(ValueError) as error:
+            plot_map(model, tiles=tiles, API_key=API_key)
+        assert "API_key" not in str(error.value)
+    # folium 0.7 / 0.8 have CartoDB tiles of their own, which get no key, as before
+    html = plot_map(model, tiles="CartoDB positron", API_key="my-token").m.get_root()
+    assert "my-token" not in html.render()
 
 
 def test_plot_map_passes_plain_floats_to_folium(monkeypatch):
