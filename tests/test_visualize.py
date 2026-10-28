@@ -327,13 +327,38 @@ def test_plot_map_without_api_key(tiles, API_key):
 
 @pytest.mark.parametrize(
     "tiles",
-    ["OpenStreetMap", "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", None],
+    [
+        "OpenStreetMap",
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        None,
+        "provider without a key",
+    ],
 )
 def test_plot_map_api_key_unused_by_other_tiles(tiles):
-    # The key is not written into the page when the tiles do not need it
+    # Tiles that need no key give the same map (or error) with and without a key
+    if tiles == "provider without a key":
+        xyzservices = pytest.importorskip("xyzservices")
+        # 512 px tiles: folium itself drops these options, so the page shows which
+        # code built the tile layer
+        tiles = xyzservices.TileProvider(
+            name="Test.NoKey",
+            url="https://tiles.example.com/{z}/{x}/{y}.png",
+            attribution="(C) Test",
+            tileSize=512,
+            zoomOffset=-1,
+        )
     model, _, _ = _fitted("infostop")
-    html = plot_map(model, tiles=tiles, API_key="my-token").m.get_root().render()
-    assert "my-token" not in html
+    results = []
+    for API_key in [None, "my-token"]:
+        try:
+            html = plot_map(model, tiles=tiles, API_key=API_key).m.get_root().render()
+        except Exception as error:  # folium < 0.14 takes no provider objects
+            results.append(type(error))
+            continue
+        assert "my-token" not in html
+        # folium gives each element a random id
+        results.append(re.sub(r"_[0-9a-f]{32}", "_ID", html))
+    assert results[0] == results[1]
 
 
 # Tile sets that need a key, and the field of the provider that the key goes into
