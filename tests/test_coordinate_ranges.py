@@ -2,13 +2,15 @@
 
 Latitudes from -90 to 90 and longitudes from -180 to 180 are valid, both ends
 included. infostop itself returns 180.0 for a place on the date line (#81, #96), and
-GPS data rounded to 5 decimals has +-180.0 for points within half a metre of it.
+GPS data rounded to 5 decimals has +-180.0 for points within about half a metre of it.
+-180 and 180 are one meridian, and every longitude at a pole is one point, so how a
+place is written must not change the labels.
 """
 
 import numpy as np
 import pytest
 
-from infostop import Infostop
+from infostop import Infostop, utils
 from infostop.models import SpatialInfomap
 
 LAT_MESSAGE = r"Latitude \(column 0\) must have values between -90 and 90"
@@ -47,7 +49,9 @@ def test_infostop_accepts_the_ends_of_the_ranges(lat, lon):
     assert labels[0] >= 0
     assert np.all(labels[:10] == labels[0])
     assert np.all(labels[10:] == -1)
-    assert np.array_equal(model.compute_label_medians()[labels[0]], [lat, lon])
+    # infostop writes the place one way: longitude 180 for -180, and 0 at the poles
+    expected = [lat, 0.0] if abs(lat) == 90 else [lat, 180.0 if lon == -180 else lon]
+    assert np.array_equal(model.compute_label_medians()[labels[0]], expected)
 
 
 @pytest.mark.parametrize("lat, lon", ENDS, ids=ENDS_IDS)
@@ -117,37 +121,187 @@ def test_label_medians_on_the_date_line_can_be_clustered_again():
     assert labels[0] >= 0
 
 
-def test_minus_180_and_180_are_one_place():
-    # Visits to a place on the line, with points at 179.99999 and at the line itself,
-    # and to a place 100 m away, alternating. The line is spelled -180 or 180.
-    rng = np.random.default_rng(0)
-    line = rng.choice([179.99999, -180.0], size=20)
-    away = np.full(20, 179.999)
-    lons = np.concatenate([line, away, line, away])
-    trace_minus = np.column_stack(
-        [np.full(len(lons), -16.8), lons, 60.0 * np.arange(len(lons))]
+def spell_line(coords, spelling):
+    """`coords` with the date line written as 180, as -180, or each way in turn."""
+    coords = np.array(coords, dtype=float)
+    on_line = np.abs(coords[:, 1]) == 180
+    if spelling == "both":
+        coords[on_line, 1] = np.where(np.arange(on_line.sum()) % 2, -180.0, 180.0)
+    else:
+        coords[on_line, 1] = {"plus": 180.0, "minus": -180.0}[spelling]
+    return coords
+
+
+def grid_around_the_line(seed):
+    """8 to 30 points on a 1e-5 degree grid (GPS data rounded to 5 decimals), within
+    about 3 m of longitude 180 and 15 m of a latitude on Taveuni."""
+    rng = np.random.default_rng(seed)
+    n = rng.integers(8, 30)
+    dlon = rng.integers(-3, 4, size=n) * 1e-5
+    lat = -16.8 + rng.integers(-15, 16, size=n) * 1e-5
+    lon = np.round(180.0 + dlon, 5)
+    lon = np.where(lon > 180, lon - 360, lon)
+    return np.column_stack([lat, lon])
+
+
+def visits_around_the_line(seed):
+    """Visits to 2 to 5 places within a few metres of longitude 180, in GPS data
+    rounded to 5 decimals."""
+    rng = np.random.default_rng(seed)
+    rows, t = [], 0.0
+    centres = [
+        (-16.8 + rng.integers(-3, 4) * 1e-5, 180.0 + rng.integers(-3, 4) * 1e-5)
+        for _ in range(rng.integers(2, 6))
+    ]
+    for _ in range(rng.integers(3, 10)):
+        clat, clon = centres[rng.integers(len(centres))]
+        for _ in range(rng.integers(6, 15)):
+            rows.append([clat + rng.normal(0, 1e-5), clon + rng.normal(0, 1e-5), t])
+            t += 60
+        t += 600
+    trace = np.array(rows)
+    trace[:, :2] = np.round(trace[:, :2], 5)
+    trace[:, 1] = np.where(trace[:, 1] > 180, trace[:, 1] - 360, trace[:, 1])
+    return trace
+
+
+@pytest.mark.parametrize("weighted", [False, True], ids=["unweighted", "weighted"])
+@pytest.mark.parametrize("seed", range(3))
+def test_spatial_infomap_labels_do_not_depend_on_how_the_date_line_is_written(
+    seed, weighted
+):
+    coords = grid_around_the_line(seed)
+    assert (np.abs(coords[:, 1]) == 180).sum() >= 2
+
+    labels = {
+        spelling: SpatialInfomap(r2=2, weighted=weighted).fit_predict(
+            spell_line(coords, spelling)
+        )
+        for spelling in ("plus", "minus", "both")
+    }
+
+    assert np.array_equal(labels["minus"], labels["plus"])
+    assert np.array_equal(labels["both"], labels["plus"])
+
+
+def test_spatial_infomap_label_numbers_do_not_depend_on_how_the_date_line_is_written():
+    plus = SpatialInfomap(r2=1).fit_predict(
+        np.array([[-16.8, 180.0], [-16.8, 179.99995]])
     )
-    trace_plus = trace_minus.copy()
-    trace_plus[trace_plus[:, 1] == -180.0, 1] = 180.0
+    minus = SpatialInfomap(r2=1).fit_predict(
+        np.array([[-16.8, -180.0], [-16.8, 179.99995]])
+    )
+    assert np.array_equal(minus, plus)
 
-    model_minus, model_plus = Infostop(), Infostop()
-    labels_minus = model_minus.fit_predict(trace_minus)
-    labels_plus = model_plus.fit_predict(trace_plus)
 
-    assert labels_minus[0] >= 0
-    assert np.all(labels_minus[:20] == labels_minus[0])
-    assert np.array_equal(labels_minus, labels_plus)
-    medians_minus = model_minus.compute_label_medians()
-    medians_plus = model_plus.compute_label_medians()
-    assert medians_minus.keys() == medians_plus.keys()
-    for label, (lat, lon) in medians_minus.items():
-        # The same longitude up to its spelling: -180 and 180 are one meridian
-        assert lat == medians_plus[label][0]
-        assert (lon - medians_plus[label][1]) % 360 == 0
+def test_infostop_label_numbers_do_not_depend_on_how_the_date_line_is_written():
+    # A stay on the line, then a stay 100 m west of it
+    def trace(line):
+        lons = [line] * 10 + [179.999] * 10
+        return np.column_stack(
+            [
+                np.full(20, -16.8),
+                lons,
+                60.0 * np.arange(20) + 3000 * (np.arange(20) >= 10),
+            ]
+        )
 
-    spatial_minus = SpatialInfomap().fit_predict(trace_minus[:, :2])
-    spatial_plus = SpatialInfomap().fit_predict(trace_plus[:, :2])
-    assert np.array_equal(spatial_minus, spatial_plus)
+    assert np.array_equal(
+        Infostop().fit_predict(trace(-180.0)), Infostop().fit_predict(trace(180.0))
+    )
+
+
+@pytest.mark.parametrize("weighted", [False, True], ids=["unweighted", "weighted"])
+@pytest.mark.parametrize("seed", [38, 0, 1])
+def test_infostop_labels_do_not_depend_on_how_the_date_line_is_written(seed, weighted):
+    trace = visits_around_the_line(seed)
+    assert (np.abs(trace[:, 1]) == 180).sum() >= 2
+
+    def fit(spelling):
+        model = Infostop(r1=3, r2=3, min_staying_time=120, weighted=weighted)
+        return model.fit_predict(spell_line(trace, spelling))
+
+    plus = fit("plus")
+    assert np.array_equal(fit("minus"), plus)
+    assert np.array_equal(fit("both"), plus)
+
+
+def test_a_trace_that_writes_the_date_line_as_minus_180_has_one_node_for_it():
+    # The stop event of the first stay is -180.0. The second stay crosses the line, so
+    # its stop event is written 180.0, as stop events across the line are.
+    def stay(lons, t0):
+        return [[-16.8, lon, t0 + 60 * i] for i, lon in enumerate(lons)]
+
+    walk = [[-16.8 + 0.01 * (i + 1), 179.9, 600 + 60 * i] for i in range(3)]
+    trace = np.array(
+        stay([-180.0] * 10, 0) + walk + stay([179.99999, -180.0, -179.99999] * 4, 3600)
+    )
+    model = Infostop(weighted=True)
+    labels = model.fit_predict(trace)
+
+    assert model._stat_coords.tolist() == [[-16.8, 180.0]]
+    assert np.array_equal(
+        labels, Infostop(weighted=True).fit_predict(spell_line(trace, "plus"))
+    )
+
+
+@pytest.mark.parametrize("weighted", [False, True], ids=["unweighted", "weighted"])
+def test_points_at_a_pole_are_one_node(weighted):
+    model = SpatialInfomap(weighted=weighted)
+    labels = model.fit_predict(np.array([[90.0, 0.0], [90.0, 90.0], [90.0, -180.0]]))
+
+    assert model._stat_coords.tolist() == [[90.0, 0.0]]
+    assert model._counts.tolist() == [3]
+    assert labels[0] >= 0 and np.all(labels == labels[0])
+
+
+@pytest.mark.parametrize(
+    "lat, lon, median",
+    [
+        (-16.8, 179.999999, [-16.8, 180.0]),
+        (-16.8, -179.999999, [-16.8, 180.0]),
+        (89.999999, 10.0, [90.0, 0.0]),
+        (-89.999999, 10.0, [-90.0, 0.0]),
+    ],
+)
+def test_label_medians_with_min_spacial_resolution_can_be_clustered_again(
+    lat, lon, median
+):
+    # Rounding by 1e-5 gives 180.00000000000003, -180.00000000000003 and
+    # 90.00000000000001 here, which are past the ends of the ranges
+    model = Infostop(min_spacial_resolution=1e-5)
+    model.fit_predict(stay_then_walk(lat, lon))
+    medians = np.array(list(model.compute_label_medians().values()))
+
+    assert medians.tolist() == [median]
+    assert SpatialInfomap().fit_predict(medians).tolist() == [0]
+
+
+@pytest.mark.parametrize(
+    "coords, expected",
+    [
+        ([[10.0, -180.0]], [[10.0, 180.0]]),
+        ([[10.0, 180.0]], [[10.0, 180.0]]),
+        ([[10.0, 180.00000000000003]], [[10.0, 180.0]]),
+        ([[10.0, -180.00000000000003]], [[10.0, 180.0]]),
+        ([[90.00000000000001, 10.0]], [[90.0, 0.0]]),
+        ([[-90.0, -180.0]], [[-90.0, 0.0]]),
+        ([[90.0, 0.0]], [[90.0, 0.0]]),
+    ],
+)
+def test_canonical_lat_lon(coords, expected):
+    assert utils.canonical_lat_lon(np.array(coords)).tolist() == expected
+
+
+def test_canonical_lat_lon_returns_points_inside_the_ranges_as_they_are():
+    rng = np.random.default_rng(0)
+    coords = np.column_stack(
+        [rng.uniform(-89.9, 89.9, 50), rng.uniform(-179.9, 179.9, 50)]
+    )
+    coords = np.vstack([coords, [[0.0, 180.0], [89.99, -179.99]]])
+    for dtype in (np.float64, np.float32):
+        c = coords.astype(dtype)
+        assert utils.canonical_lat_lon(c) is c
 
 
 def test_a_stay_at_the_north_pole_with_any_longitudes_is_one_stop():

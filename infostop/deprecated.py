@@ -1,10 +1,8 @@
 def label_trace(*args):
-    raise DeprecationWarning(
-        """`label_trace` is no longer supported. Instead use:
+    raise DeprecationWarning("""`label_trace` is no longer supported. Instead use:
 			>>> from infostop import Infostop
 			>>> model = Infostop()
-			>>> labels = model.fit_predict(my_data)"""
-    )
+			>>> labels = model.fit_predict(my_data)""")
 
 
 def label_static_points(*args):
@@ -17,9 +15,7 @@ def label_static_points(*args):
 
 
 def label_network(*args):
-    raise DeprecationWarning(
-        """`label_network` is no longer supported. Instead use:
+    raise DeprecationWarning("""`label_network` is no longer supported. Instead use:
 			>>> from infostop import Infostop
 			>>> model = Infostop()
-			>>> labels = model.fit_predict(my_data)"""
-    )
+			>>> labels = model.fit_predict(my_data)""")

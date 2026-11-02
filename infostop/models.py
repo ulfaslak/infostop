@@ -81,7 +81,8 @@ class Infostop:
         weighted : bool
             Weight edges in the network representation by distance. Each edge always has weight
             `max(count(a), count(b))`, where `count` is the number of stationarity events whose
-            median has exactly these coordinates (after rounding by `min_spacial_resolution`). If
+            median has exactly these coordinates (after rounding by `min_spacial_resolution`; with
+            'haversine', longitude -180 counts as 180, and every longitude at a pole as 0). If
             True, that weight is divided by `distance(a, b) ** weight_exponent`, with the distance in
             meters for 'haversine' and in coordinate units for 'euclidean'.
         weight_exponent : float
@@ -250,6 +251,10 @@ class Infostop:
                 np.around(self._stat_coords / self._min_spacial_resolution)
                 * self._min_spacial_resolution
             )
+        # One spelling per place (longitude 180 for -180, 0 at the poles), so that
+        # `np.unique` does not keep one place as two nodes 0 m apart
+        if self._distance_metric == "haversine":
+            self._stat_coords = utils.canonical_lat_lon(self._stat_coords)
 
         if self._verbose:
             num_stat_orig = len(self._stat_coords)
@@ -323,7 +328,8 @@ class Infostop:
         With 'haversine', a label that lies on both sides of longitude +-180 gets its
         median longitude across that line, in (-180, 180]. Such a label has
         longitudes that span more than 180 degrees, and less once the negative ones
-        are moved up by 360.
+        are moved up by 360. With 'haversine', label medians are within [-90, 90] and
+        (-180, 180]: the date line is written as 180, and a pole with longitude 0.
 
         Returns
         -------
@@ -513,8 +519,9 @@ class SpatialInfomap:
         weighted : bool
             Weight edges in the network representation by distance. Each edge always has weight
             `max(count(a), count(b))`, where `count` is the number of input points with exactly these
-            coordinates (after rounding by `min_spacial_resolution`). If True, that weight is divided
-            by `distance(a, b) ** weight_exponent`, with the distance in meters for 'haversine' and in
+            coordinates (after rounding by `min_spacial_resolution`; with 'haversine', longitude -180
+            counts as 180, and every longitude at a pole as 0). If True, that weight is divided by
+            `distance(a, b) ** weight_exponent`, with the distance in meters for 'haversine' and in
             coordinate units for 'euclidean'.
         weight_exponent : float
             Exponent used when weighting edges in the network. Only used if `weighted=True`. Higher
@@ -612,6 +619,10 @@ class SpatialInfomap:
                 np.around(self._stat_coords / self._min_spacial_resolution)
                 * self._min_spacial_resolution
             )
+        # One spelling per place (longitude 180 for -180, 0 at the poles), so that
+        # `np.unique` does not keep one place as two nodes 0 m apart
+        if self._distance_metric == "haversine":
+            self._stat_coords = utils.canonical_lat_lon(self._stat_coords)
 
         if self._verbose:
             num_stat_orig = len(self._stat_coords)

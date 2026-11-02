@@ -98,6 +98,37 @@ def median_lat_lon(coords):
     return median
 
 
+def canonical_lat_lon(coords):
+    """Write (lat, lon) points in degrees so that the same place has the same coordinates.
+
+    Latitudes are clipped into [-90, 90] and longitudes into [-180, 180], as rounding by
+    `min_spacial_resolution` can move them a last digit past the ends. Then longitude
+    -180 is written as 180, and the poles get longitude 0. If no point needs a change,
+    `coords` is returned as it is, otherwise a float64 copy.
+
+    Input
+    -----
+        coords : array-like (shape=(N, 2))
+            Latitudes in column 0 and longitudes in column 1, in degrees.
+
+    Output
+    ------
+        coords : numpy.array (shape=(N, 2))
+    """
+    coords = np.asarray(coords)
+    if len(coords) == 0:
+        return coords
+    lat, lon = coords[:, 0], coords[:, 1]
+    if not np.any((np.abs(lat) >= 90) | (lon <= -180) | (lon > 180)):
+        return coords
+    coords = coords.astype(float)
+    coords[:, 0] = np.clip(coords[:, 0], -90, 90)
+    coords[:, 1] = np.clip(coords[:, 1], -180, 180)
+    coords[coords[:, 1] == -180, 1] = 180.0
+    coords[np.abs(coords[:, 0]) == 90, 1] = 0.0
+    return coords
+
+
 def query_neighbors(coords, r2, distance_metric="haversine", weighted=False):
     """Build a network from a set of points and a threshold distance.
 
