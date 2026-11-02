@@ -698,6 +698,7 @@ def test_plot_map_draws_a_stop_on_the_antimeridian_in_one_piece(display_data):
     lons = _drawn_lons(folmap)
 
     # The stop is a few metres wide, and so is its polygon
+    assert len(rings) == (0 if display_data == "all_nonstationary" else 1)
     for ring in rings:
         assert np.ptp(ring[:, 1]) < 1e-3
     # Everything is drawn next to everything else, near the centre of the map
@@ -779,13 +780,74 @@ def test_folium_map_keeps_a_stop_across_greenwich_in_one_piece_on_a_date_line_ma
     folmap = FoliumMap(points, labels)
     folmap.render_polygons()
     folmap.render_points()
+    folmap.render_heatmap()
 
     assert abs(abs(folmap.m.location[1]) - 180) < 1e-3
+    assert len(_drawn(folmap)[0]) == 2
+    _assert_each_stop_drawn_in_one_piece(folmap, labels)
+
+
+def _assert_each_stop_drawn_in_one_piece(folmap, labels, width=0.01):
+    """The polygon, markers and heatmap points of each stop are drawn together."""
+    rings, markers, heat = _drawn(folmap)
+    for label in set(labels.tolist()) - {-1}:
+        lons = np.concatenate([markers[labels == label, 1], heat[labels == label, 1]])
+        assert np.ptp(lons) < width, label
+        # ... and inside the longitudes of one of the polygons
+        assert any(
+            ring[:, 1].min() - 1e-9 <= lons.min()
+            and lons.max() <= ring[:, 1].max() + 1e-9
+            for ring in rings
+        ), label
+
+
+def test_folium_map_draws_a_stop_in_one_piece_when_the_centre_is_far_away():
+    # A stop on both sides of longitude 180, on a map centred in London
+    points = np.array(
+        [
+            [-16.8, 179.9999],
+            [-16.8, -179.9999],
+            [-16.8001, 179.99995],
+            [-16.8001, -179.99995],
+        ]
+    )
+    labels = np.zeros(4, dtype=int)
+    folmap = FoliumMap(points, labels, location=(51.48, 0.0))
+    folmap.render_polygons()
+    folmap.render_points()
+    folmap.render_heatmap()
+
+    _assert_each_stop_drawn_in_one_piece(folmap, labels)
+
+
+def test_folium_map_draws_a_stop_on_the_far_side_of_its_centre_in_one_piece():
+    # Nowhere near +-180: a stop in the Bering Strait, exactly 180 degrees of
+    # longitude from a map centred in Copenhagen, with points on both sides of that
+    points = np.array([[65.7, -167.43171], [65.7, -167.43169], [65.7001, -167.4317]])
+    labels = np.zeros(3, dtype=int)
+    folmap = FoliumMap(points, labels, location=(55.6761, 12.5683))
+    folmap.render_polygons()
+    folmap.render_points()
+    folmap.render_heatmap()
+
+    _assert_each_stop_drawn_in_one_piece(folmap, labels)
+
+
+def test_folium_map_points_labelled_minus_1_move_one_by_one():
+    # Points that are not in a stop are each drawn within 180 degrees of the centre
+    points = np.array([[-16.8, 179.9999], [-16.8, -179.9999], [-16.8, -179.9998]])
+    folmap = FoliumMap(points, np.array([-1, -1, -1]), location=(-16.8, 179.9999))
+    folmap.render_polygons()
+    folmap.render_points()
+
     rings, markers, _ = _drawn(folmap)
-    assert len(rings) == 2
-    for ring in rings:
-        assert np.ptp(ring[:, 1]) < 0.01
-    assert np.all(np.abs(markers[:, 1] - folmap.m.location[1]) <= 180)
+    assert rings == []
+    assert np.allclose(markers[:, 1], [179.9999, 180.0001, 180.0002])
+
+
+def test_folium_map_with_a_bad_location_raises_the_folium_error():
+    with pytest.raises(ValueError):
+        FoliumMap(np.array([[55.7, 12.5]]), np.array([0]), location=(55.7,))
 
 
 def test_folium_map_away_from_the_antimeridian_draws_points_as_given():
