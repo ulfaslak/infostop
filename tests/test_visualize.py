@@ -7,7 +7,7 @@ import folium
 import numpy as np
 import pytest
 
-from infostop import Infostop, SpatialInfomap, plot_map, visualize
+from infostop import Infostop, SpatialInfomap, plot_map, utils, visualize
 from infostop.visualize import FoliumMap
 
 DISPLAY_DATA = ["all", "all_stationary", "all_nonstationary", "unique_stationary"]
@@ -648,3 +648,225 @@ def test_folium_map_centre_on_the_antimeridian():
     lat, lon = FoliumMap(points, np.array([0, 0, 0])).m.location
     assert lat == -16.8
     assert lon == pytest.approx(-179.99999, abs=1e-9)
+
+
+def _drawn(folmap):
+    """What the map draws, as [lat, lon]: polygon rings, markers and heatmap points."""
+    rings, markers, heat = [], [], []
+    for child in folmap.m._children.values():
+        if isinstance(child, folium.GeoJson):
+            for ring in child.data["features"][0]["geometry"]["coordinates"]:
+                rings.append(np.array(ring)[:, ::-1])
+        elif isinstance(child, folium.CircleMarker):
+            markers.append(child.location)
+        elif isinstance(child, visualize.HeatMap):
+            heat.extend(child.data)
+    return rings, np.array(markers).reshape(-1, 2), np.array(heat).reshape(-1, 2)
+
+
+def _drawn_lons(folmap):
+    rings, markers, heat = _drawn(folmap)
+    return np.concatenate([r[:, 1] for r in rings] + [markers[:, 1], heat[:, 1]])
+
+
+def _taveuni_noisy():
+    """Two visits to one place on Taveuni, with points a few metres on both sides of
+    longitude 180, each visit followed by a walk away (#101)."""
+    rng = np.random.default_rng(0)
+    rows, t = [], 0
+    for _ in range(2):
+        for _ in range(10):
+            rows.append([-16.8, 180 + rng.normal(0, 3e-5), t])
+            t += 60
+        for i in range(3):
+            rows.append([-16.8 + 0.01 * (i + 1), 179.99, t])
+            t += 60
+    data = np.array(rows)
+    data[:, 1] = (data[:, 1] + 180) % 360 - 180
+    assert (data[:, 1] < 0).any() and (data[:, 1] > 179).any()
+    return data
+
+
+@pytest.mark.parametrize("display_data", DISPLAY_DATA)
+def test_plot_map_draws_a_stop_on_the_antimeridian_in_one_piece(display_data):
+    model = Infostop()
+    labels = model.fit_predict(_taveuni_noisy())
+    assert len(set(labels[labels >= 0])) == 1
+
+    folmap = plot_map(model, display_data=display_data, scatter=True)
+    rings, _, _ = _drawn(folmap)
+    lons = _drawn_lons(folmap)
+
+    # The stop is a few metres wide, and so is its polygon
+    assert len(rings) == (0 if display_data == "all_nonstationary" else 1)
+    for ring in rings:
+        assert np.ptp(ring[:, 1]) < 1e-3
+    # Everything is drawn next to everything else, near the centre of the map
+    assert np.ptp(lons) < 0.02
+    assert np.all(np.abs(lons - folmap.m.location[1]) < 0.02)
+
+
+def _two_places_across_the_antimeridian():
+    """Place A 20 m west of longitude 180 and place B 20 m east of it, visited A B A B."""
+    rows, t = [], 0
+    for lon in (179.99983, -179.99982) * 2:
+        for _ in range(10):
+            rows.append([-16.8, lon, t])
+            t += 60
+        for i in range(3):
+            rows.append([-16.8 + 0.01 * (i + 1), lon, t])
+            t += 60
+    return np.array(rows)
+
+
+@pytest.mark.parametrize("kind", ["infostop", "spatial_infomap"])
+def test_plot_map_draws_places_across_the_antimeridian_next_to_each_other(kind):
+    data = _two_places_across_the_antimeridian()
+    if kind == "infostop":
+        model = Infostop()
+        labels = model.fit_predict(data)
+    else:
+        # Only the visits: SpatialInfomap gives every walk point its own label
+        model = SpatialInfomap(r2=10)
+        labels = model.fit_predict(data[data[:, 0] == -16.8, :2])
+    assert len(set(labels[labels >= 0])) == 2
+
+    for display_data in DISPLAY_DATA:
+        folmap = plot_map(model, display_data=display_data, scatter=True)
+        lons = _drawn_lons(folmap)
+        # SpatialInfomap labels every point, so it has no non-stationary points
+        if kind == "spatial_infomap" and display_data == "all_nonstationary":
+            assert len(lons) == 0
+            continue
+        assert len(lons) > 0, display_data
+        assert np.ptp(lons) < 0.02, display_data
+        assert np.all(np.abs(lons - folmap.m.location[1]) < 0.02), display_data
+
+
+@pytest.mark.parametrize("centre", [179.9999, -179.9999])
+def test_folium_map_draws_on_the_copy_of_the_world_at_its_location(centre):
+    points = np.array([[-16.8, 179.9998], [-16.8, -179.9998], [-16.8, -179.9997]])
+    folmap = FoliumMap(points, np.array([0, 0, 0]), location=(-16.8, centre))
+    folmap.render_polygons()
+    folmap.render_points()
+    folmap.render_heatmap()
+
+    assert folmap.m.location == [-16.8, centre]
+    lons = _drawn_lons(folmap)
+    assert np.all(np.abs(lons - centre) < 1e-3)
+    # Points move by whole turns of 360 degrees, and only those across the line
+    _, markers, heat = _drawn(folmap)
+    for drawn in (markers, heat):
+        assert np.allclose((drawn[:, 1] - points[:, 1]) % 360, 0)
+        assert np.array_equal(
+            drawn[:, 1] == points[:, 1], np.sign(points[:, 1]) == np.sign(centre)
+        )
+
+
+def test_folium_map_keeps_a_stop_across_greenwich_in_one_piece_on_a_date_line_map():
+    # A stop in London on both sides of longitude 0, and one in Fiji on both sides of
+    # 180. The map is centred in Fiji, so London is on the far side of the world.
+    points = np.array(
+        [
+            [51.5, -0.001],
+            [51.5, 0.001],
+            [51.501, 0.0],
+            [-16.8, 179.9999],
+            [-16.8, -179.9999],
+            [-16.801, 180.0],
+        ]
+    )
+    labels = np.array([0, 0, 0, 1, 1, 1])
+    folmap = FoliumMap(points, labels)
+    folmap.render_polygons()
+    folmap.render_points()
+    folmap.render_heatmap()
+
+    assert abs(abs(folmap.m.location[1]) - 180) < 1e-3
+    assert len(_drawn(folmap)[0]) == 2
+    _assert_each_stop_drawn_in_one_piece(folmap, labels)
+
+
+def _assert_each_stop_drawn_in_one_piece(folmap, labels, width=0.01):
+    """The polygon, markers and heatmap points of each stop are drawn together."""
+    rings, markers, heat = _drawn(folmap)
+    for label in set(labels.tolist()) - {-1}:
+        lons = np.concatenate([markers[labels == label, 1], heat[labels == label, 1]])
+        assert np.ptp(lons) < width, label
+        # ... and inside the longitudes of one of the polygons
+        assert any(
+            ring[:, 1].min() - 1e-9 <= lons.min()
+            and lons.max() <= ring[:, 1].max() + 1e-9
+            for ring in rings
+        ), label
+
+
+def test_folium_map_draws_a_stop_in_one_piece_when_the_centre_is_far_away():
+    # A stop on both sides of longitude 180, on a map centred in London
+    points = np.array(
+        [
+            [-16.8, 179.9999],
+            [-16.8, -179.9999],
+            [-16.8001, 179.99995],
+            [-16.8001, -179.99995],
+        ]
+    )
+    labels = np.zeros(4, dtype=int)
+    folmap = FoliumMap(points, labels, location=(51.48, 0.0))
+    folmap.render_polygons()
+    folmap.render_points()
+    folmap.render_heatmap()
+
+    _assert_each_stop_drawn_in_one_piece(folmap, labels)
+
+
+def test_folium_map_draws_a_stop_on_the_far_side_of_its_centre_in_one_piece():
+    # Nowhere near +-180: a stop in the Bering Strait, exactly 180 degrees of
+    # longitude from a map centred in Copenhagen, with points on both sides of that
+    points = np.array([[65.7, -167.43171], [65.7, -167.43169], [65.7001, -167.4317]])
+    labels = np.zeros(3, dtype=int)
+    folmap = FoliumMap(points, labels, location=(55.6761, 12.5683))
+    folmap.render_polygons()
+    folmap.render_points()
+    folmap.render_heatmap()
+
+    _assert_each_stop_drawn_in_one_piece(folmap, labels)
+
+
+def test_folium_map_points_labelled_minus_1_move_one_by_one():
+    # Points that are not in a stop are each drawn within 180 degrees of the centre
+    points = np.array([[-16.8, 179.9999], [-16.8, -179.9999], [-16.8, -179.9998]])
+    folmap = FoliumMap(points, np.array([-1, -1, -1]), location=(-16.8, 179.9999))
+    folmap.render_polygons()
+    folmap.render_points()
+
+    rings, markers, _ = _drawn(folmap)
+    assert rings == []
+    assert np.allclose(markers[:, 1], [179.9999, 180.0001, 180.0002])
+
+
+def test_folium_map_with_a_bad_location_raises_the_folium_error():
+    with pytest.raises(ValueError):
+        FoliumMap(np.array([[55.7, 12.5]]), np.array([0]), location=(55.7,))
+
+
+def test_folium_map_away_from_the_antimeridian_draws_points_as_given():
+    rng = np.random.default_rng(0)
+    points = np.vstack(
+        [rng.normal(HOME, 1e-4, (20, 2)), rng.normal(WORK, 1e-4, (20, 2))]
+    )
+    labels = np.repeat([0, 1], 20)
+    folmap = FoliumMap(points, labels)
+    folmap.render_polygons()
+    folmap.render_points()
+    folmap.render_heatmap()
+
+    rings, markers, heat = _drawn(folmap)
+    expected_rings = [
+        utils.convex_hull(points[labels == label]) for label in sorted(set(labels))
+    ]
+    assert sorted(r.tolist() for r in rings) == sorted(
+        r.tolist() for r in expected_rings
+    )
+    assert markers.tolist() == points.tolist()
+    assert heat.tolist() == points.tolist()

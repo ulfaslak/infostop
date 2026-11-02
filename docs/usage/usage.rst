@@ -16,9 +16,13 @@ array with one row per point, in time order, and 2 or 3 columns:
 * ``[latitude, longitude, time]``
 
 With the default ``distance_metric="haversine"``, latitude and longitude are in
-degrees. For coordinates that are not latitude and longitude, see
-:ref:`euclidean`. Timestamps must not decrease from one row to the next. Their
-unit is up to you; see :ref:`timestamps`.
+degrees: latitude from -90 to 90 and longitude from -180 to 180, both ends
+included. -180 and 180 are the same meridian: you can use either, and get the
+same labels. The coordinates that infostop computes, such as label medians,
+write it as 180, and a pole with longitude 0. For coordinates that are not
+latitude and longitude, see :ref:`euclidean`.
+Timestamps must not decrease from one row to the next. Their unit is up to you;
+see :ref:`timestamps`.
 
 Label a trace
 -------------
@@ -266,6 +270,13 @@ that are not labeled ``-1``). ``"all"`` draws every input point,
 ``"all_stationary"`` only the input points that belong to a stop, and
 ``"all_nonstationary"`` only the input points labeled ``-1``. Each location
 is drawn once.
+
+The map draws everything within 180° of longitude of its centre, and the
+points of each stop together. So a stop on the date line (longitude ±180), and
+stops on both sides of it, are drawn where they are. The shapes on the map can
+then have longitudes beyond ±180: for example, on a map centred at 179.9999, a
+point at -179.9998 is drawn at 180.0002. On the map tiles, that is the same
+place.
 
 .. _euclidean:
 
