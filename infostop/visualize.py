@@ -106,6 +106,39 @@ def _named_tile_layer(tiles, **kwargs):
         ) from error
 
 
+def _turns(lon, center_lon):
+    """Whole turns of 360 degrees from `center_lon` to the copy of `lon` nearest to it."""
+    return np.round((lon - center_lon) / 360)
+
+
+def _drawn_points(points, labels, center_lon):
+    """`points` with the longitudes at which the map draws them.
+
+    Leaflet does not wrap what it draws across longitude +-180: it draws -179.9 a whole
+    world away from 179.9. So each longitude moves by whole turns of 360 degrees, to
+    within 180 of `center_lon`. The points of a stop move together: first to within 180
+    of one of them, then all by the turns of their median. So a stop is drawn in one
+    piece, also on both sides of +-180. Points labelled -1 move one by one. If no point
+    moves, `points` is returned as it is.
+    """
+    points = np.asarray(points)
+    if len(points) == 0:
+        return points
+    labels = np.asarray(labels)
+    lon = points[:, 1].astype(float)
+    drawn = lon - 360 * _turns(lon, center_lon)
+    for stop_idx in set(labels.tolist()) - {-1}:
+        in_stop = labels == stop_idx
+        stop_lon = lon[in_stop]
+        stop_lon = stop_lon - 360 * _turns(stop_lon, stop_lon[0])
+        drawn[in_stop] = stop_lon - 360 * _turns(np.median(stop_lon), center_lon)
+    if np.array_equal(drawn, lon):
+        return points
+    points = points.astype(float)
+    points[:, 1] = drawn
+    return points
+
+
 class FoliumMap:
     """Plot points on a folium map.
 
@@ -126,7 +159,12 @@ class FoliumMap:
         location : tuple of floats
             Center of the map. Default is the median of `points` (across longitude
             +-180 if the points lie on both sides of it), so it must be given if
-            `points` is empty.
+            `points` is empty. Everything is drawn on the copy of the world that the
+            center is on: longitudes move by whole turns of 360 degrees to within 180
+            of the center's, and the points of a stop move together. So a stop on
+            +-180, and stops on both sides of it, are drawn where they are. A point
+            more than 180 degrees of longitude from the center moves too, also far
+            from +-180, and the map's shapes can have longitudes beyond +-180.
         attr : str
             Credit for the tiles, shown in the corner of the map. Give it when `tiles`
             is a tile URL, for example `attr="© OpenTopoMap (CC-BY-SA)"`. By default,
@@ -190,6 +228,8 @@ class FoliumMap:
         self.m = folium.Map(**map_kwargs)
         if keyed is not None:
             keyed.add_to(self.m)
+        # After folium has checked `location`
+        self._center_lon = float(location[1])
 
     def render_polygons(self, color="#ee9999", opacity=0.3):
         """Render convex hulls of points in each label-group.
@@ -210,10 +250,11 @@ class FoliumMap:
                 "fillOpacity": opacity,
             }
 
+        points = _drawn_points(self.points, self.labels, self._center_lon)
+        labels = np.asarray(self.labels)
         stop_hulls = []
         for stop_idx in set(self.labels) - {-1}:
-            p = self.points[self.labels == stop_idx]
-            stop_hulls.append(utils.convex_hull(p))
+            stop_hulls.append(utils.convex_hull(points[labels == stop_idx]))
 
         features = {
             "type": "FeatureCollection",
@@ -246,7 +287,7 @@ class FoliumMap:
                 Sampling rate of scattered points. For example, using 0.2 shows only 20 percent
                 of the data.
         """
-        p = np.asarray(self.points)
+        p = _drawn_points(self.points, self.labels, self._center_lon)
         if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
@@ -275,7 +316,7 @@ class FoliumMap:
                 Sampling rate of points used for rendering the heatmap. For example, using 0.2
                 renders a heatmap based on only 20 percent of the data.
         """
-        p = np.asarray(self.points)
+        p = _drawn_points(self.points, self.labels, self._center_lon)
         if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
@@ -306,6 +347,11 @@ def plot_map(
     """Load Folium map to display the data and fit.
 
     Note: `plot_map` only works if `distance_metric` is "haversine".
+
+    The map draws everything within 180 degrees of longitude of its center, and the
+    points of a stop together, so stops on both sides of +-180 are drawn next to each
+    other. Its shapes can then have longitudes beyond +-180 (see `location` in
+    `FoliumMap`).
 
     Parameters
     ----------

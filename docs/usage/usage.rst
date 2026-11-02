@@ -265,6 +265,13 @@ that are not labeled ``-1``). ``"all"`` draws every input point,
 ``"all_nonstationary"`` only the input points labeled ``-1``. Each location
 is drawn once.
 
+The map draws everything within 180° of longitude of its centre, and the
+points of each stop together. So a stop on the date line (longitude ±180), and
+stops on both sides of it, are drawn where they are. The shapes on the map can
+then have longitudes beyond ±180: for example, on a map centred at 179.9999, a
+point at -179.9998 is drawn at 180.0002. On the map tiles, that is the same
+place.
+
 .. _euclidean:
 
 Coordinates that are not latitude and longitude
