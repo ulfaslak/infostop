@@ -356,7 +356,8 @@ class Infostop:
         # For each unique label, take the median of its points. Latitude and
         # longitude also have a median across the antimeridian.
         median = (
-            utils.median_lat_lon
+            # Written as the stop events are: a median at a pole gets longitude 0
+            (lambda points: utils.canonical_lat_lon([utils.median_lat_lon(points)])[0])
             if self._distance_metric == "haversine"
             else lambda points: np.median(points, axis=0)
         )

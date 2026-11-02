@@ -293,6 +293,54 @@ def test_canonical_lat_lon(coords, expected):
     assert utils.canonical_lat_lon(np.array(coords)).tolist() == expected
 
 
+@pytest.mark.parametrize(
+    "coords, expected",
+    [
+        # Past the ends by more than a rounding error: the same place inside them
+        ([[0.0, 180.05]], [[0.0, -179.95]]),
+        ([[0.0, -180.05]], [[0.0, 179.95]]),
+        ([[90.3, 9.8]], [[89.7, -170.2]]),
+        ([[-90.3, -9.8]], [[-89.7, 170.2]]),
+        ([[90.3, -170.0]], [[89.7, 10.0]]),
+    ],
+)
+def test_canonical_lat_lon_past_the_ends(coords, expected):
+    assert np.allclose(utils.canonical_lat_lon(np.array(coords)), expected, atol=1e-9)
+
+
+def _haversine(a, b):
+    a, b = np.radians(a), np.radians(b)
+    h = (
+        np.sin((b[:, 0] - a[:, 0]) / 2) ** 2
+        + np.cos(a[:, 0]) * np.cos(b[:, 0]) * np.sin((b[:, 1] - a[:, 1]) / 2) ** 2
+    )
+    return 2 * 6371000 * np.arcsin(np.sqrt(np.clip(h, 0, 1)))
+
+
+def test_canonical_lat_lon_does_not_move_points_on_the_globe():
+    rng = np.random.default_rng(0)
+    # Points past the ends by up to 0.5 degrees, as rounding by 1 can give
+    coords = np.column_stack(
+        [rng.uniform(-90.5, 90.5, 200), rng.uniform(-180.5, 180.5, 200)]
+    )
+    others = np.column_stack([rng.uniform(-90, 90, 200), rng.uniform(-180, 180, 200)])
+    canonical = utils.canonical_lat_lon(coords)
+
+    assert np.all(np.abs(canonical[:, 0]) <= 90)
+    assert np.all((canonical[:, 1] > -180) & (canonical[:, 1] <= 180))
+    assert np.allclose(
+        _haversine(canonical, others), _haversine(coords, others), atol=1e-6
+    )
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64, np.int64])
+def test_canonical_lat_lon_keeps_the_dtype(dtype):
+    coords = np.array([[10, -180], [90, 45], [20, 30]], dtype=dtype)
+    canonical = utils.canonical_lat_lon(coords)
+    assert canonical.dtype == dtype
+    assert canonical.tolist() == [[10, 180], [90, 0], [20, 30]]
+
+
 def test_canonical_lat_lon_returns_points_inside_the_ranges_as_they_are():
     rng = np.random.default_rng(0)
     coords = np.column_stack(
@@ -302,6 +350,53 @@ def test_canonical_lat_lon_returns_points_inside_the_ranges_as_they_are():
     for dtype in (np.float64, np.float32):
         c = coords.astype(dtype)
         assert utils.canonical_lat_lon(c) is c
+
+
+def test_spatial_infomap_float32_labels_do_not_depend_on_how_the_date_line_is_written():
+    plus = np.array([[-16.8, 180.0], [-16.8, 179.99995]], dtype=np.float32)
+    minus = plus.copy()
+    minus[0, 1] = -180.0
+    assert np.array_equal(
+        SpatialInfomap(r2=5).fit_predict(minus), SpatialInfomap(r2=5).fit_predict(plus)
+    )
+    for seed in range(20):
+        coords = grid_around_the_line(seed).astype(np.float32)
+        labels = [
+            SpatialInfomap(r2=2).fit_predict(spell_line(coords, s).astype(np.float32))
+            for s in ("plus", "minus", "both")
+        ]
+        assert np.array_equal(labels[1], labels[0]), seed
+        assert np.array_equal(labels[2], labels[0]), seed
+
+
+def test_rounding_past_the_date_line_keeps_places_apart():
+    # Rounded by 0.65, 179.9 becomes 180.05 and -179.95 becomes -180.05: two places
+    # 11 km apart, which must not become one at 180
+    coords = np.array([[0.0, 179.9]] * 2 + [[0.0, -179.95]] * 2)
+    labels = SpatialInfomap(r2=100, min_spacial_resolution=0.65).fit_predict(coords)
+    assert labels[0] == labels[1] and labels[2] == labels[3] and labels[0] != labels[2]
+
+
+def test_rounding_past_a_pole_keeps_one_place_together():
+    # Rounded by 0.7, (89.99, 10) becomes (90.3, 9.8): the same place as
+    # (89.7, -170.2), which (89.75, -170.2) becomes
+    coords = np.array([[89.99, 10.0]] * 2 + [[89.75, -170.2]] * 2)
+    labels = SpatialInfomap(r2=20000, min_spacial_resolution=0.7).fit_predict(coords)
+    assert np.all(labels == labels[0])
+
+
+def test_a_label_median_at_a_pole_has_longitude_0():
+    # A stay at the pole and a stay a last digit below it, with another longitude
+    def stay(lat, lon, t0):
+        return [[lat, lon, t0 + 60 * i] for i in range(10)]
+
+    walk = [[89.99 - 0.01 * i, 0.0, 700 + 60 * i] for i in range(3)]
+    trace = np.array(stay(90.0, 0.0, 0) + walk + stay(np.nextafter(90, 0), 45.0, 4000))
+    model = Infostop()
+    labels = model.fit_predict(trace)
+    assert len(set(labels[labels >= 0])) == 1
+
+    assert list(model.compute_label_medians().values()) == [[90.0, 0.0]]
 
 
 def test_a_stay_at_the_north_pole_with_any_longitudes_is_one_stop():
