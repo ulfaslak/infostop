@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Longitudes of ±180 and latitudes of ±90 are accepted.** With `distance_metric="haversine"` (the default), `Infostop` and `SpatialInfomap` now accept longitudes from -180 to 180 and latitudes from -90 to 90 with both ends included. Before, a single point at exactly ±180 or ±90 raised `AssertionError: Longitude (column 1) must have values between -180 and 180` (or the same for latitude) for the whole input. This affected GPS data rounded to 5 decimals, which has ±180.0 for points within half a metre of the date line, and infostop's own output, which can be exactly 180.0 for a place on the line (stop event medians, and `compute_label_medians`): passing it back in, for example to `SpatialInfomap`, failed. -180 and 180 are one meridian and give the same labels. Labels do not change for input that was accepted before. (fixes [#102](https://github.com/ulfaslak/infostop/issues/102))
+
 ## 0.2.1 (2026-10-28)
 
 This release fixes stops on the date line (longitude ±180°), lets `plot_map` put an API key into any `xyzservices` tile set that needs one and take a credit for your own tile URL, and fixes the output of `verbose=True`. Labels change only for stays with points on both sides of longitude ±180° (and, rarely, within about `r1`, 10 m by default, of a pole). All other traces get the same labels as with 0.2.0. The installation notes now have commands for the labels of 0.1.9 that work with a current pip.

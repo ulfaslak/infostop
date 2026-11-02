@@ -161,7 +161,8 @@ class Infostop:
         Parameters
         ----------
             data : numpy.array (shape (N, 2)/(N, 3)) or list (or tuple) of such numpy.arrays
-                Columns 0 and 1 are reserved for lat and lon. Column 2 is reserved for time (any unit consistent with
+                Columns 0 and 1 are reserved for lat and lon. With 'haversine', lat is from -90 to 90 and lon from -180
+                to 180, in degrees, both ends included. Column 2 is reserved for time (any unit consistent with
                 `min_staying_time` and `max_time_between`). If the input type is a list or tuple of arrays, each array
                 is assumed to be the trace of a single user, in which case the obtained stop locations are shared by all
                 users in the population.
@@ -459,11 +460,13 @@ class Infostop:
                     "%sTimestamps must be ordered" % error_insert
                 )
             if self._distance_metric == "haversine" and len(coords_u) > 0:
-                assert np.min(coords_u[:, 0]) > -90 and np.max(coords_u[:, 0]) < 90, (
+                assert np.min(coords_u[:, 0]) >= -90 and np.max(coords_u[:, 0]) <= 90, (
                     "%sLatitude (column 0) must have values between -90 and 90"
                     % error_insert
                 )
-                assert np.min(coords_u[:, 1]) > -180 and np.max(coords_u[:, 1]) < 180, (
+                assert (
+                    np.min(coords_u[:, 1]) >= -180 and np.max(coords_u[:, 1]) <= 180
+                ), (
                     "%sLongitude (column 1) must have values between -180 and 180"
                     % error_insert
                 )
@@ -575,8 +578,9 @@ class SpatialInfomap:
         Parameters
         ----------
             data : numpy.array (shape (N, 2))
-                One row per point, in any order. With 'haversine', column 0 is latitude and column 1
-                is longitude, in degrees. With 'euclidean', the columns are x and y. A list of arrays
+                One row per point, in any order. With 'haversine', column 0 is latitude (from -90 to
+                90) and column 1 is longitude (from -180 to 180), in degrees, both ends included. With
+                'euclidean', the columns are x and y. A list of arrays
                 or a time column is not supported.
 
         Returns
@@ -684,8 +688,8 @@ class SpatialInfomap:
         assert data.shape[1] == 2, "Number of columns must be 2"
         if self._distance_metric == "haversine":
             assert (
-                np.min(data[:, 0]) > -90 and np.max(data[:, 0]) < 90
+                np.min(data[:, 0]) >= -90 and np.max(data[:, 0]) <= 90
             ), "Latitude (column 0) must have values between -90 and 90"
             assert (
-                np.min(data[:, 1]) > -180 and np.max(data[:, 1]) < 180
+                np.min(data[:, 1]) >= -180 and np.max(data[:, 1]) <= 180
             ), "Longitude (column 1) must have values between -180 and 180"
