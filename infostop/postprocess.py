@@ -27,7 +27,7 @@ def compute_intervals(labels, times, max_time_between=None, *, model=None):
             together with `max_time_between`.
 
             If you give neither, `max_time_between` is 86400 (24 hours in seconds) and a
-            FutureWarning is shown. A future version will require one of them.
+            FutureWarning is shown. infostop 1.0 will require one of them.
     Returns
     -------
         intervals : array-like (shape=(N_intervals, 3))
@@ -59,7 +59,7 @@ def compute_intervals(labels, times, max_time_between=None, *, model=None):
             "max_time_between=%d (24 hours in seconds). This is wrong if the model that "
             "produced the labels has another `max_time_between` (for example, a model "
             "for timestamps in milliseconds). Give `model=` (the fitted Infostop model) "
-            "or `max_time_between=`. A future version will require one of them."
+            "or `max_time_between=`. infostop 1.0 will require one of them."
             % _DEFAULT_MAX_TIME_BETWEEN,
             FutureWarning,
             stacklevel=2,
