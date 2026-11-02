@@ -1,8 +1,18 @@
+import warnings
+
 import numpy as np
 
+from infostop.models import Infostop, SpatialInfomap
 
-def compute_intervals(labels, times, max_time_between=86400):
+# Used, with a FutureWarning, when neither `max_time_between` nor `model` is given
+_DEFAULT_MAX_TIME_BETWEEN = 86400
+
+
+def compute_intervals(labels, times, max_time_between=None, *, model=None):
     """Compute stop and moves intervals from the list of labels.
+
+    Give either `model` or `max_time_between`, so that the intervals use the same
+    `max_time_between` as the model that produced `labels`.
 
     Parameters
     ----------
@@ -11,13 +21,51 @@ def compute_intervals(labels, times, max_time_between=86400):
         max_time_between: int/float
             Consecutive points with the same label are in one interval if the time between
             them is at most `max_time_between`. Use the `max_time_between` of the model that
-            produced `labels`.
+            produced `labels`. Do not give it together with `model`.
+        model: Infostop
+            The model that produced `labels`. Its `max_time_between` is used. Do not give it
+            together with `max_time_between`.
+
+            If you give neither, `max_time_between` is 86400 (24 hours in seconds) and a
+            FutureWarning is shown. infostop 1.0 will require one of them.
     Returns
     -------
         intervals : array-like (shape=(N_intervals, 3))
             Columns are "label", "start_time", "end_time"
 
+    Example
+    -------
+        >>> model = Infostop()
+        >>> labels = model.fit_predict(data)
+        >>> intervals = compute_intervals(labels, data[:, 2], model=model)
     """
+    if isinstance(max_time_between, (Infostop, SpatialInfomap)):
+        raise TypeError(
+            "Give the model as `model=model`. The third argument is `max_time_between`."
+        )
+    if model is not None:
+        if max_time_between is not None:
+            raise TypeError("Give `model` or `max_time_between`, not both")
+        if not isinstance(model, Infostop):
+            raise TypeError(
+                "`model` must be an `Infostop` model, not %s. Only `Infostop` has "
+                "`max_time_between`. Give `max_time_between=` instead."
+                % type(model).__name__
+            )
+        max_time_between = model._max_time_between
+    elif max_time_between is None:
+        warnings.warn(
+            "compute_intervals() got neither `model` nor `max_time_between`, so it uses "
+            "max_time_between=%d (24 hours in seconds). This is wrong if the model that "
+            "produced the labels has another `max_time_between` (for example, a model "
+            "for timestamps in milliseconds). Give `model=` (the fitted Infostop model) "
+            "or `max_time_between=`. infostop 1.0 will require one of them."
+            % _DEFAULT_MAX_TIME_BETWEEN,
+            FutureWarning,
+            stacklevel=2,
+        )
+        max_time_between = _DEFAULT_MAX_TIME_BETWEEN
+
     assert len(labels) == len(times), "`labels` and `times` must match in length"
 
     # Input and output sequence

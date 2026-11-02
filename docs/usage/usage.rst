@@ -209,7 +209,7 @@ intervals with label ``-1``. For the trace above:
 .. code-block:: pycon
 
    >>> from infostop import compute_intervals
-   >>> intervals = compute_intervals(labels, data[:, 2])
+   >>> intervals = compute_intervals(labels, data[:, 2], model=model)
    >>> for label, start, end in intervals:
    ...     print(label, start, end)
    1.0 0.0 540.0
@@ -222,17 +222,23 @@ Here the labels are floats, because the timestamps are.
 
 For several traces, call it once per trace, with that trace's labels and
 timestamps. Two consecutive points with the same label stay in one interval
-only if the time between them is at most ``max_time_between`` (default
-86400).
+only if the time between them is at most ``max_time_between``.
 
-.. note::
+``model=model`` makes ``compute_intervals`` use the ``max_time_between`` of
+the model that made the labels. Instead of the model, you can give the value
+yourself, for example
+``compute_intervals(labels, times, max_time_between=86_400_000)`` for
+timestamps in milliseconds.
 
-   ``compute_intervals`` does not get ``max_time_between`` from the model.
-   If you fitted the model with another value, pass the same value here. For
-   example, with timestamps in milliseconds, use
-   ``compute_intervals(labels, times, max_time_between=86_400_000)``. With
-   the default, every gap longer than 86400 milliseconds (86.4 seconds) would
-   end an interval. See
+.. warning::
+
+   If you give neither ``model`` nor ``max_time_between``,
+   ``compute_intervals`` uses 86400 (24 hours in seconds) and shows a
+   ``FutureWarning``. infostop 1.0 will require one of them. If your model
+   has another ``max_time_between``, 86400 gives wrong intervals. For example,
+   with timestamps in milliseconds and
+   ``Infostop(max_time_between=86_400_000)``, every gap longer than 86.4
+   seconds ends an interval. See
    `issue #83 <https://github.com/ulfaslak/infostop/issues/83>`_.
 
 Plot stop locations on a map
