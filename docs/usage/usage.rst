@@ -16,9 +16,13 @@ array with one row per point, in time order, and 2 or 3 columns:
 * ``[latitude, longitude, time]``
 
 With the default ``distance_metric="haversine"``, latitude and longitude are in
-degrees. For coordinates that are not latitude and longitude, see
-:ref:`euclidean`. Timestamps must not decrease from one row to the next. Their
-unit is up to you; see :ref:`timestamps`.
+degrees: latitude from -90 to 90 and longitude from -180 to 180, both ends
+included. -180 and 180 are the same meridian: you can use either, and get the
+same labels. The coordinates that infostop computes, such as label medians,
+write it as 180, and a pole with longitude 0. For coordinates that are not
+latitude and longitude, see :ref:`euclidean`.
+Timestamps must not decrease from one row to the next. Their unit is up to you;
+see :ref:`timestamps`.
 
 Label a trace
 -------------

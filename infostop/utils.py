@@ -98,6 +98,56 @@ def median_lat_lon(coords):
     return median
 
 
+def canonical_lat_lon(coords):
+    """Write (lat, lon) points in degrees so that the same place has the same coordinates.
+
+    Rounding by `min_spacial_resolution` can move points past the ends of the ranges.
+    An overshoot of a few units in the last place is a rounding error, and is clipped.
+    A larger one is written as the same place inside the ranges: a longitude past
+    +-180 moves by 360, and a latitude past a pole is reflected across it, with its
+    longitude moved by 180. Then longitude -180 is written as 180, and the poles get
+    longitude 0. No point moves on the globe (except by the clipped rounding error), so
+    distances between points do not change. If no point needs a change, `coords` is
+    returned as it is, otherwise a copy of the same dtype.
+
+    Input
+    -----
+        coords : array-like (shape=(N, 2))
+            Latitudes in column 0 and longitudes in column 1, in degrees.
+
+    Output
+    ------
+        coords : numpy.array (shape=(N, 2))
+    """
+    coords = np.asarray(coords)
+    if len(coords) == 0:
+        return coords
+    if not np.any(
+        (np.abs(coords[:, 0]) >= 90) | (coords[:, 1] <= -180) | (coords[:, 1] > 180)
+    ):
+        return coords
+    # A copy in the same dtype: float32 points must not get float64 distances only
+    # where a point is rewritten
+    coords = coords.copy()
+    lat, lon = coords[:, 0], coords[:, 1]
+    floating = np.issubdtype(coords.dtype, np.floating)
+    tiny = 4 * np.spacing(coords.dtype.type(180)) if floating else 0
+    over = np.abs(lat) - 90
+    lat[(over > 0) & (over <= tiny)] = np.copysign(90, lat[(over > 0) & (over <= tiny)])
+    past_pole = np.abs(lat) > 90
+    lat[past_pole] = np.copysign(180, lat[past_pole]) - lat[past_pole]
+    lon[past_pole] += 180
+    over = np.abs(lon) - 180
+    lon[(over > 0) & (over <= tiny)] = np.copysign(
+        180, lon[(over > 0) & (over <= tiny)]
+    )
+    outside = np.abs(lon) > 180
+    lon[outside] = (lon[outside] + 180) % 360 - 180
+    lon[lon == -180] = 180
+    lon[np.abs(lat) == 90] = 0
+    return coords
+
+
 def query_neighbors(coords, r2, distance_metric="haversine", weighted=False):
     """Build a network from a set of points and a threshold distance.
 
