@@ -81,7 +81,8 @@ class Infostop:
         weighted : bool
             Weight edges in the network representation by distance. Each edge always has weight
             `max(count(a), count(b))`, where `count` is the number of stationarity events whose
-            median has exactly these coordinates (after rounding by `min_spacial_resolution`). If
+            median has exactly these coordinates (after rounding by `min_spacial_resolution`; with
+            'haversine', longitude -180 counts as 180, and every longitude at a pole as 0). If
             True, that weight is divided by `distance(a, b) ** weight_exponent`, with the distance in
             meters for 'haversine' and in coordinate units for 'euclidean'.
         weight_exponent : float
@@ -161,7 +162,8 @@ class Infostop:
         Parameters
         ----------
             data : numpy.array (shape (N, 2)/(N, 3)) or list (or tuple) of such numpy.arrays
-                Columns 0 and 1 are reserved for lat and lon. Column 2 is reserved for time (any unit consistent with
+                Columns 0 and 1 are reserved for lat and lon. With 'haversine', lat is from -90 to 90 and lon from -180
+                to 180, in degrees, both ends included. Column 2 is reserved for time (any unit consistent with
                 `min_staying_time` and `max_time_between`). If the input type is a list or tuple of arrays, each array
                 is assumed to be the trace of a single user, in which case the obtained stop locations are shared by all
                 users in the population.
@@ -249,6 +251,10 @@ class Infostop:
                 np.around(self._stat_coords / self._min_spacial_resolution)
                 * self._min_spacial_resolution
             )
+        # One spelling per place (longitude 180 for -180, 0 at the poles), so that
+        # `np.unique` does not keep one place as two nodes 0 m apart
+        if self._distance_metric == "haversine":
+            self._stat_coords = utils.canonical_lat_lon(self._stat_coords)
 
         if self._verbose:
             num_stat_orig = len(self._stat_coords)
@@ -322,7 +328,8 @@ class Infostop:
         With 'haversine', a label that lies on both sides of longitude +-180 gets its
         median longitude across that line, in (-180, 180]. Such a label has
         longitudes that span more than 180 degrees, and less once the negative ones
-        are moved up by 360.
+        are moved up by 360. With 'haversine', label medians are within [-90, 90] and
+        (-180, 180]: the date line is written as 180, and a pole with longitude 0.
 
         Returns
         -------
@@ -349,7 +356,8 @@ class Infostop:
         # For each unique label, take the median of its points. Latitude and
         # longitude also have a median across the antimeridian.
         median = (
-            utils.median_lat_lon
+            # Written as the stop events are: a median at a pole gets longitude 0
+            (lambda points: utils.canonical_lat_lon([utils.median_lat_lon(points)])[0])
             if self._distance_metric == "haversine"
             else lambda points: np.median(points, axis=0)
         )
@@ -459,11 +467,13 @@ class Infostop:
                     "%sTimestamps must be ordered" % error_insert
                 )
             if self._distance_metric == "haversine" and len(coords_u) > 0:
-                assert np.min(coords_u[:, 0]) > -90 and np.max(coords_u[:, 0]) < 90, (
+                assert np.min(coords_u[:, 0]) >= -90 and np.max(coords_u[:, 0]) <= 90, (
                     "%sLatitude (column 0) must have values between -90 and 90"
                     % error_insert
                 )
-                assert np.min(coords_u[:, 1]) > -180 and np.max(coords_u[:, 1]) < 180, (
+                assert (
+                    np.min(coords_u[:, 1]) >= -180 and np.max(coords_u[:, 1]) <= 180
+                ), (
                     "%sLongitude (column 1) must have values between -180 and 180"
                     % error_insert
                 )
@@ -510,8 +520,9 @@ class SpatialInfomap:
         weighted : bool
             Weight edges in the network representation by distance. Each edge always has weight
             `max(count(a), count(b))`, where `count` is the number of input points with exactly these
-            coordinates (after rounding by `min_spacial_resolution`). If True, that weight is divided
-            by `distance(a, b) ** weight_exponent`, with the distance in meters for 'haversine' and in
+            coordinates (after rounding by `min_spacial_resolution`; with 'haversine', longitude -180
+            counts as 180, and every longitude at a pole as 0). If True, that weight is divided by
+            `distance(a, b) ** weight_exponent`, with the distance in meters for 'haversine' and in
             coordinate units for 'euclidean'.
         weight_exponent : float
             Exponent used when weighting edges in the network. Only used if `weighted=True`. Higher
@@ -575,8 +586,9 @@ class SpatialInfomap:
         Parameters
         ----------
             data : numpy.array (shape (N, 2))
-                One row per point, in any order. With 'haversine', column 0 is latitude and column 1
-                is longitude, in degrees. With 'euclidean', the columns are x and y. A list of arrays
+                One row per point, in any order. With 'haversine', column 0 is latitude (from -90 to
+                90) and column 1 is longitude (from -180 to 180), in degrees, both ends included. With
+                'euclidean', the columns are x and y. A list of arrays
                 or a time column is not supported.
 
         Returns
@@ -608,6 +620,10 @@ class SpatialInfomap:
                 np.around(self._stat_coords / self._min_spacial_resolution)
                 * self._min_spacial_resolution
             )
+        # One spelling per place (longitude 180 for -180, 0 at the poles), so that
+        # `np.unique` does not keep one place as two nodes 0 m apart
+        if self._distance_metric == "haversine":
+            self._stat_coords = utils.canonical_lat_lon(self._stat_coords)
 
         if self._verbose:
             num_stat_orig = len(self._stat_coords)
@@ -684,8 +700,8 @@ class SpatialInfomap:
         assert data.shape[1] == 2, "Number of columns must be 2"
         if self._distance_metric == "haversine":
             assert (
-                np.min(data[:, 0]) > -90 and np.max(data[:, 0]) < 90
+                np.min(data[:, 0]) >= -90 and np.max(data[:, 0]) <= 90
             ), "Latitude (column 0) must have values between -90 and 90"
             assert (
-                np.min(data[:, 1]) > -180 and np.max(data[:, 1]) < 180
+                np.min(data[:, 1]) >= -180 and np.max(data[:, 1]) <= 180
             ), "Longitude (column 1) must have values between -180 and 180"
