@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **`plot_map` near the date line.** A stop with points on both sides of longitude ±180 got a polygon that spanned 360° of longitude: a band from the stop to the edge of the map. Points and polygons on the other side of the line from the map centre were drawn a whole world away, out of view. `plot_map` and `FoliumMap` now draw everything on the copy of the world that the map is centred on: each longitude moves by whole turns of 360° to within 180° of the centre, and each stop's polygon moves as a whole. So a stop on the line is drawn as a small polygon, and stops on both sides of the line are drawn next to each other. This also holds when you give `FoliumMap` a `location`. The shapes on such a map (its GeoJSON, markers and heatmap) can have longitudes beyond ±180. Maps away from ±180 and the poles are drawn as before. Labels do not change. (fixes [#101](https://github.com/ulfaslak/infostop/issues/101))
+
 ## 0.2.1 (2026-10-28)
 
 This release fixes stops on the date line (longitude ±180°), lets `plot_map` put an API key into any `xyzservices` tile set that needs one and take a credit for your own tile URL, and fixes the output of `verbose=True`. Labels change only for stays with points on both sides of longitude ±180° (and, rarely, within about `r1`, 10 m by default, of a pole). All other traces get the same labels as with 0.2.0. The installation notes now have commands for the labels of 0.1.9 that work with a current pip.

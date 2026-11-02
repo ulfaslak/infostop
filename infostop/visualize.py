@@ -106,6 +106,26 @@ def _named_tile_layer(tiles, **kwargs):
         ) from error
 
 
+def _move_lon(points, center_lon, by=None):
+    """Move the longitudes of `points` by whole turns of 360 degrees, to within 180 of `center_lon`.
+
+    Leaflet does not wrap what it draws across longitude +-180: it draws -179.9 a whole
+    world away from 179.9. Moved this way, a point is drawn on the copy of the world
+    that `center_lon` is on. Each point moves by its own turns, or with `by`, all points
+    move by the turns of longitude `by`. Points that need no move are returned as they
+    are, so a map away from +-180 is drawn as before.
+    """
+    points = np.asarray(points)
+    if len(points) == 0:
+        return points
+    turns = np.round(((points[:, 1] if by is None else by) - center_lon) / 360)
+    if not np.any(turns):
+        return points
+    points = points.astype(float)
+    points[:, 1] -= 360 * turns
+    return points
+
+
 class FoliumMap:
     """Plot points on a folium map.
 
@@ -126,7 +146,11 @@ class FoliumMap:
         location : tuple of floats
             Center of the map. Default is the median of `points` (across longitude
             +-180 if the points lie on both sides of it), so it must be given if
-            `points` is empty.
+            `points` is empty. Everything is drawn on the copy of the world that the
+            center is on: longitudes move by whole turns of 360 degrees to within 180
+            of the center's (each stop's polygon as a whole), so points on both sides
+            of +-180 are drawn next to each other. The map's shapes can then have
+            longitudes beyond +-180.
         attr : str
             Credit for the tiles, shown in the corner of the map. Give it when `tiles`
             is a tile URL, for example `attr="© OpenTopoMap (CC-BY-SA)"`. By default,
@@ -156,6 +180,7 @@ class FoliumMap:
         self.labels = labels
         if location is None:
             location = tuple(utils.median_lat_lon(points))
+        self._center_lon = float(location[1])
         map_kwargs = dict(location=location, zoom_start=zoom_start, tiles=tiles)
         old_folium = "API_key" in inspect.signature(folium.Map).parameters
         keyed = None
@@ -210,9 +235,14 @@ class FoliumMap:
                 "fillOpacity": opacity,
             }
 
+        points = np.asarray(self.points)
         stop_hulls = []
         for stop_idx in set(self.labels) - {-1}:
-            p = self.points[self.labels == stop_idx]
+            p = points[self.labels == stop_idx]
+            # In one piece, also on both sides of +-180: its points within 180 degrees
+            # of one of them. Then all of it to the copy of the world of the map centre.
+            p = _move_lon(p, p[0, 1])
+            p = _move_lon(p, self._center_lon, by=np.median(p[:, 1]))
             stop_hulls.append(utils.convex_hull(p))
 
         features = {
@@ -246,7 +276,7 @@ class FoliumMap:
                 Sampling rate of scattered points. For example, using 0.2 shows only 20 percent
                 of the data.
         """
-        p = np.asarray(self.points)
+        p = _move_lon(self.points, self._center_lon)
         if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
@@ -275,7 +305,7 @@ class FoliumMap:
                 Sampling rate of points used for rendering the heatmap. For example, using 0.2
                 renders a heatmap based on only 20 percent of the data.
         """
-        p = np.asarray(self.points)
+        p = _move_lon(self.points, self._center_lon)
         if subsampling < 1 and len(p) > 0:
             mask = np.random.choice(
                 range(p.shape[0]), size=int(subsampling * p.shape[0]), replace=False
@@ -306,6 +336,9 @@ def plot_map(
     """Load Folium map to display the data and fit.
 
     Note: `plot_map` only works if `distance_metric` is "haversine".
+
+    Near longitude +-180, the map draws everything on the side of the line that it is
+    centred on, so its shapes can have longitudes beyond +-180 (see `FoliumMap`).
 
     Parameters
     ----------
