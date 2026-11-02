@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 
-from infostop.models import Infostop
+from infostop.models import Infostop, SpatialInfomap
 
 # Used, with a FutureWarning, when neither `max_time_between` nor `model` is given
 _DEFAULT_MAX_TIME_BETWEEN = 86400
@@ -39,22 +39,27 @@ def compute_intervals(labels, times, max_time_between=None, *, model=None):
         >>> labels = model.fit_predict(data)
         >>> intervals = compute_intervals(labels, data[:, 2], model=model)
     """
+    if isinstance(max_time_between, (Infostop, SpatialInfomap)):
+        raise TypeError(
+            "Give the model as `model=model`. The third argument is `max_time_between`."
+        )
     if model is not None:
         if max_time_between is not None:
             raise TypeError("Give `model` or `max_time_between`, not both")
         if not isinstance(model, Infostop):
             raise TypeError(
                 "`model` must be an `Infostop` model, not %s. Only `Infostop` has "
-                "`max_time_between`." % type(model).__name__
+                "`max_time_between`. Give `max_time_between=` instead."
+                % type(model).__name__
             )
         max_time_between = model._max_time_between
     elif max_time_between is None:
         warnings.warn(
             "compute_intervals() got neither `model` nor `max_time_between`, so it uses "
             "max_time_between=%d (24 hours in seconds). This is wrong if the model that "
-            "produced the labels has another `max_time_between`, or if the timestamps are "
-            "not in seconds. Give `model=` (the fitted Infostop model) or "
-            "`max_time_between=`. A future version will require one of them."
+            "produced the labels has another `max_time_between` (for example, a model "
+            "for timestamps in milliseconds). Give `model=` (the fitted Infostop model) "
+            "or `max_time_between=`. A future version will require one of them."
             % _DEFAULT_MAX_TIME_BETWEEN,
             FutureWarning,
             stacklevel=2,

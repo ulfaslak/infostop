@@ -218,5 +218,15 @@ def test_model_and_max_time_between_raises():
 
 
 def test_spatial_infomap_model_raises():
-    with pytest.raises(TypeError, match="must be an `Infostop` model"):
+    with pytest.raises(
+        TypeError, match="must be an `Infostop` model.*`max_time_between=`"
+    ):
         compute_intervals(np.array([0]), np.array([0]), model=SpatialInfomap())
+
+
+@pytest.mark.parametrize("model", [Infostop(), SpatialInfomap()])
+def test_model_as_third_argument_raises(model):
+    # With a single point the model would never be compared to a gap, so without
+    # the check this returned intervals and no error.
+    with pytest.raises(TypeError, match="`model=model`"):
+        compute_intervals(np.array([0]), np.array([0]), model)

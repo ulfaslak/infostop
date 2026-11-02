@@ -231,9 +231,10 @@ timestamps in milliseconds.
    If you give neither ``model`` nor ``max_time_between``,
    ``compute_intervals`` uses 86400 (24 hours in seconds) and shows a
    ``FutureWarning``. A future version will require one of them. If your model
-   has another ``max_time_between``, or your timestamps are not in seconds,
-   86400 gives wrong intervals. For example, with timestamps in milliseconds,
-   every gap longer than 86.4 seconds ends an interval. See
+   has another ``max_time_between``, 86400 gives wrong intervals. For example,
+   with timestamps in milliseconds and
+   ``Infostop(max_time_between=86_400_000)``, every gap longer than 86.4
+   seconds ends an interval. See
    `issue #83 <https://github.com/ulfaslak/infostop/issues/83>`_.
 
 Plot stop locations on a map
