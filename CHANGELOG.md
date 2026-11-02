@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### `compute_intervals`
+
+- **New `model` parameter, and a warning if `max_time_between` is missing.** `compute_intervals(labels, times, model=model)` uses the `max_time_between` of the model that made the labels. Before, `compute_intervals` had its own `max_time_between`, with the default 86400, and nothing told you if it was not the same as the model's. With another value in the model, the intervals were wrong. For example, with timestamps in milliseconds and `Infostop(max_time_between=86_400_000)`, every gap longer than 86.4 seconds ended an interval, so a stay fell apart into one interval per point. If you give neither `model` nor `max_time_between`, `compute_intervals` still uses 86400, but now shows a `FutureWarning`. A future version will require one of them. Give `model` or `max_time_between`, not both: both give a `TypeError`. `model` must be an `Infostop` model, because `SpatialInfomap` has no `max_time_between`. Calls that give `max_time_between` work as before, and no intervals change. (fixes [#83](https://github.com/ulfaslak/infostop/issues/83))
+
 ## 0.2.1 (2026-10-28)
 
 This release fixes stops on the date line (longitude ±180°), lets `plot_map` put an API key into any `xyzservices` tile set that needs one and take a credit for your own tile URL, and fixes the output of `verbose=True`. Labels change only for stays with points on both sides of longitude ±180° (and, rarely, within about `r1`, 10 m by default, of a pole). All other traces get the same labels as with 0.2.0. The installation notes now have commands for the labels of 0.1.9 that work with a current pip.
