@@ -129,4 +129,4 @@ To get the labels of 0.1.9 with 0.2.0, keep Infomap 1.0.6, pass `num_trials=1`, 
 
 ### Version numbers
 
-Versions 0.1.10 and 0.1.11 were never published. The git tags `v1.0.10` and `v1.0.11` are not releases either: they mark two commits from 2022 whose library code is the same as 0.1.9.
+Versions 0.1.10 and 0.1.11 were never published. The git tag `v1.0.10` is not a release either: it marks a commit from 2022 whose library code is the same as 0.1.9. A second such tag, `v1.0.11`, was deleted from GitHub in November 2026. Clones made before then may still have it.
