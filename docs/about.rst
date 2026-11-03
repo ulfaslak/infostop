@@ -83,7 +83,7 @@ Infomap can need a compiler even when Infostop does not:
 - **Python 3.9 and 3.10.** pip compiles Infomap 2.9.2, the last Infomap for
   these versions, because it has no wheels for them. This needs a C++
   compiler. On Apple Silicon Macs, a native arm64 Python needs nothing more.
-  If ``import infostop`` then fails with
+  If ``import infostop`` fails with
   ``symbol not found in flat namespace '___kmpc_...'``, your Python runs as
   x86_64 under Rosetta, and its Infomap was compiled with Homebrew's
   ``libomp``, which is arm64 only. ``OPENMP=0`` has no effect on Infomap
