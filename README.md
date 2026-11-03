@@ -69,7 +69,13 @@ The [documentation](https://infostop.readthedocs.io) has runnable examples and e
 ## Installation
 `pip install infostop`
 
-**Python 3.9 and 3.10**: pip compiles Infomap 2.9.2, the last Infomap for these versions, because it has no wheels for them. This needs a C++ compiler.
+**Python 3.9 and 3.10**: pip compiles Infomap 2.9.2, the last Infomap for these versions, because it has no wheels for them. This needs a C++ compiler. On Apple Silicon Macs, a native arm64 Python needs nothing more. Infomap uses OpenMP if Homebrew's `libomp` is installed, and compiles without OpenMP if not. Both give the same labels.
+
+If `import infostop` fails with `symbol not found in flat namespace '___kmpc_...'`, your Python runs as x86_64 under Rosetta, and its Infomap was compiled with Homebrew's `libomp`, which is arm64 only. This can happen when pip or uv reuse an Infomap from their cache that a universal2 Python, such as Apple's `/usr/bin/python3`, compiled. `OPENMP=0` has no effect on Infomap 2.9.2. Compile Infomap again without the cache, with the Python that fails (with uv: `uv pip install --reinstall --no-cache infomap==2.9.2`):
+```Bash
+$ pip install --force-reinstall --no-cache-dir infomap==2.9.2
+```
+Checked on macOS 26.6 (Apple clang 21, Homebrew `libomp` 20.1.2): the build with Python 3.9 and 3.10, and the import error and its fix with Python 3.9.
 
 **macOS without Infomap wheels** (Intel Macs, x86_64 Pythons under Rosetta on Apple Silicon, and Apple Silicon Macs older than macOS 15, on Python 3.11+): pip has to compile Infomap, and Infomap's build needs OpenMP unless you switch it off ([#77](https://github.com/ulfaslak/infostop/issues/77)). Install Infomap without OpenMP first, then infostop:
 ```Bash
