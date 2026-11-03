@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Installation notes
+
+- **Python 3.9 and 3.10 on Apple Silicon.** The installation notes now say that a native arm64 Python compiles Infomap 2.9.2 with no extra steps, with or without Homebrew's `libomp`. They also say what to do if `import infostop` fails with `symbol not found in flat namespace '___kmpc_...'`. This error comes when a Python that runs as x86_64 under Rosetta gets an Infomap that was compiled with Homebrew's `libomp`, which is arm64 only. For example, pip or uv reuse an Infomap from their cache that a universal2 Python, such as Apple's `/usr/bin/python3`, compiled. `OPENMP=0` has no effect on Infomap 2.9.2. Compile Infomap again without the cache: `pip install --force-reinstall --no-cache-dir infomap==2.9.2`.
+
 ## 0.2.2 (2026-11-02)
 
 This release fixes the two known issues on the date line from 0.2.1: infostop now accepts longitudes of ±180 (and also latitudes of ±90), and `plot_map` draws stops on and across the date line where they are. `compute_intervals` has a new `model` parameter, so that its intervals use the `max_time_between` of the model, and it shows a `FutureWarning` if it gets neither `model` nor `max_time_between`. Labels do not change for input that 0.2.1 accepted, with one exception: with `min_spacial_resolution`, if a stop event rounds onto -180, past ±180, or onto or past a pole, labels can change, and the other stops of the same fit can get new label numbers.
