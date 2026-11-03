@@ -4,7 +4,7 @@
 
 ### Installation notes
 
-- **Python 3.9 and 3.10 on Apple Silicon.** The installation notes now say that a native arm64 Python compiles Infomap 2.9.2 with no extra steps, with or without Homebrew's `libomp`. They also say what to do if `import infostop` fails with `symbol not found in flat namespace '___kmpc_...'`. This error comes when a Python that runs as x86_64 under Rosetta gets an Infomap that was compiled with Homebrew's `libomp`, which is arm64 only. For example, pip or uv reuse an Infomap from their cache that a universal2 Python, such as Apple's `/usr/bin/python3`, compiled. `OPENMP=0` has no effect on Infomap 2.9.2. Compile Infomap again without the cache: `pip install --force-reinstall --no-cache-dir infomap==2.9.2`.
+- **Python 3.9 and 3.10 on Apple Silicon.** The installation notes now say that a native arm64 Python compiles Infomap 2.9.2 with no extra steps, with or without Homebrew's `libomp`. They also say what to do if `import infostop` fails with `symbol not found in flat namespace '___kmpc_...'`. This error comes when a Python that runs as x86_64 under Rosetta gets an Infomap that was compiled with Homebrew's `libomp`, which is arm64 only. For example, pip or uv reuse an Infomap from their cache that a universal2 Python, such as Apple's `/usr/bin/python3`, compiled. `OPENMP=0` has no effect on Infomap 2.9.2. Compile Infomap again without the cache: `pip install --force-reinstall --no-cache-dir infomap==2.9.2`. ([#110](https://github.com/ulfaslak/infostop/pull/110))
 
 ## 0.2.2 (2026-11-02)
 
